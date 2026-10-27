@@ -18,6 +18,96 @@ Open the app, paste a PR URL or click a fixture, and read the desk.
 - **Routing.** Local graph, small pack. Nemotron on Token Factory: Lightning, Super, Super VL, Ultra.
 - **Honesty.** Live, Fixture, or Replay badge. Estimate ledger. Spend caps. Prebaked Replay if the live path fails.
 
+## Architecture
+
+BLOCK is only a regex secret. Only VerdictGate sets the stamp. The hosted UI draws the neighborhood with React Flow. Mermaid is still generated for comments, not for the desk.
+
+**System**
+
+```mermaid
+flowchart TB
+  subgraph Client
+    Intake["Intake /"]
+    Desk["Run /r/id"]
+  end
+
+  subgraph API["Next.js"]
+    POST["POST /api/runs"]
+    GET["GET /api/runs/id"]
+    SSE["GET /api/runs/id/events"]
+  end
+
+  subgraph Orch["RunOrchestrator"]
+    Fetch["Fetch"]
+    Snapshot["Snapshot"]
+    Graph["Graph local"]
+    Pack["Pack"]
+    Triage["Triage Lightning"]
+    Tavily["Tavily"]
+    Super["Super findings"]
+    Vision["Super VL"]
+    Ultra["Ultra optional"]
+    Gate["VerdictGate"]
+  end
+
+  subgraph Ext["Outside the app"]
+    GitHub
+    TF["Nebius Token Factory"]
+    Tav["Tavily API"]
+  end
+
+  Store["RunStore LRU plus fixtures"]
+
+  subgraph UI["Desk"]
+    Overlay["Overlay until map"]
+    Canvas["React Flow canvas"]
+    Stamp["Stamp and tickets"]
+  end
+
+  Intake --> POST
+  POST --> Fetch
+  Fetch --> GitHub
+  Fetch --> Snapshot
+  Snapshot --> Graph
+  Graph --> Pack
+  Pack --> Triage
+  Triage --> TF
+  Triage --> Tavily
+  Tavily --> Tav
+  Tavily --> Super
+  Super --> TF
+  Super --> Vision
+  Vision --> TF
+  Vision --> Ultra
+  Ultra --> TF
+  Ultra --> Gate
+  Gate --> Store
+  POST --> Desk
+  Desk --> SSE
+  Store --> SSE
+  SSE --> Overlay
+  Overlay --> Canvas
+  Canvas --> Stamp
+  Desk --> GET
+  GET --> Store
+```
+
+**Steps**
+
+```mermaid
+flowchart LR
+  Fetch --> Snapshot --> Graph --> Pack --> Triage --> Tavily --> Vision --> Gate
+```
+
+**Stamps**
+
+```mermaid
+flowchart LR
+  Gate --> SHIP["No cited exceptions"]
+  Gate --> FIX["Cited exceptions"]
+  Gate --> BLOCK["High-certainty exception"]
+```
+
 ## Setup
 
 ```bash
