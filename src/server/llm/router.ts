@@ -13,7 +13,7 @@ const SECTION_KEYS = ["issue", "patch", "repoMap", "neighbors", "tavily"] as con
 const CLIP_ORDER = ["tavily", "neighbors", "repoMap", "patch", "issue"] as const;
 
 const SUPER_JSON_HINT =
-  'Respond with a JSON object: {"startHere":[{"path":"","symbol":"","why":""}],"concerns":[{"name":"","paths":[]}],"functions":[{"name":"","path":"","job":""}],"mermaid":"graph TD; ...","findings":[{"kind":"scope_drift","severity":"high","confidence":0.8,"title":"","body":"","evidence":[{"kind":"file","path":"","startLine":1,"quote":""}]}],"residualNotes":[],"proposedStamp":"FIX"}';
+  'Respond with a JSON object: {"startHere":[{"path":"","symbol":"","why":""}],"concerns":[{"name":"","paths":[]}],"functions":[{"name":"","path":"","job":""}],"mermaid":"graph TD; ...","findings":[],"residualNotes":[],"proposedStamp":"SHIP"}';
 
 const TRIAGE_JSON_HINT =
   'Respond with JSON {"claims":[{"type":"package","query":"","packageName":""}]}. type is package, api, or cve.';

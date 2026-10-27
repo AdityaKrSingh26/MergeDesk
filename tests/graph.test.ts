@@ -37,7 +37,7 @@ describe("personalize", () => {
     expect(g.hops).toBe(1);
   });
 
-  it("keeps changed Go files and reports parser none when no grammar applies", async () => {
+  it("keeps changed Go files and reports parser regex", async () => {
     const g = personalize(
       await buildGraph({
         files: { "internal/regex.go": "package regex\nfunc Lower() {}\n" },
@@ -46,7 +46,39 @@ describe("personalize", () => {
       ["internal/regex.go"],
     );
     expect(g.filesKept).toContain("internal/regex.go");
-    expect(g.parser).toBe("none");
+    expect(g.parser).toBe("regex");
+  });
+
+  it("links same-package Go files as reference neighbors", async () => {
+    const g = personalize(
+      await buildGraph({
+        files: {
+          "internal/a.go": "package internal\nfunc A() {}\n",
+          "internal/b.go": "package internal\nfunc B() {}\n",
+        },
+        changedPaths: ["internal/a.go"],
+        forceParser: "regex",
+      }),
+      ["internal/a.go"],
+    );
+    expect(g.filesKept).toContain("internal/b.go");
+    expect(g.parser).toBe("regex");
+  });
+
+  it("follows quoted C includes", async () => {
+    const g = personalize(
+      await buildGraph({
+        files: {
+          "src/main.c": '#include "util.h"\nint main() { return 0; }\n',
+          "src/util.h": "int util(void);\n",
+        },
+        changedPaths: ["src/main.c"],
+        forceParser: "regex",
+      }),
+      ["src/main.c"],
+    );
+    expect(g.filesKept).toContain("src/util.h");
+    expect(g.parser).toBe("regex");
   });
 });
 

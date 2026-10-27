@@ -41,6 +41,10 @@ export function gate(input: GateInput): Verdict {
       if (input.coverage.tavily !== "ok") continue;
       if (!evidence.some((item) => item.kind === "tavily" && item.tavilyHits === 0)) continue;
     }
+    if (raw.kind === "scope_drift") {
+      const paths = evidence.map((item) => item.path).filter((p): p is string => Boolean(p));
+      if (paths.length > 0 && paths.every((p) => /\.(?:test|spec)\.|_test\.|_spec\./i.test(p))) continue;
+    }
 
     const finding: Finding = {
       id: raw.id ?? `f-${index}`,

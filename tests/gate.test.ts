@@ -151,6 +151,25 @@ describe("gate", () => {
     expect(regexSecret.stamp).toBe("BLOCK");
   });
 
+  it("drops scope_drift that only cites test files", () => {
+    const v = gate({
+      rawFindings: [{
+        kind: "scope_drift",
+        severity: "medium",
+        confidence: 0.9,
+        title: "extra tests",
+        body: "",
+        evidence: [{ kind: "file" as const, path: "src/clamp.test.ts", startLine: 1, quote: "assertEqual" }],
+        model: "super",
+        cited: true,
+      }],
+      coverage: makeCoverage(),
+      ledger: [],
+    });
+    expect(v.findings).toEqual([]);
+    expect(v.stamp).toBe("SHIP");
+  });
+
   it("drops a duplicate regex secret with the same path, line, and quote", () => {
     const v = gate({
       rawFindings: [

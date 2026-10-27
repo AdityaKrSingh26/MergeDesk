@@ -15,7 +15,7 @@ Open the app, paste a PR URL or click a fixture, and read the desk.
 - **Stamp.** Advisory labels only: **No cited exceptions**, **Cited exceptions**, **High-certainty exception**.
 - **Tickets.** Kind, path, line, and quote. Coverage chips show what this run actually saw.
 - **Grounding.** Tavily search for invented surfaces. Zero hits is not proof of absence.
-- **Routing.** Local graph, small pack. Nemotron on Token Factory: Lightning, Super, Super VL, Ultra.
+- **Routing.** Local graph, small pack. Tree-sitter for JS, TS, and Python. Regex neighborhood for Go, Rust, C, Java, and similar. Nemotron on Token Factory: Lightning, Super, Super VL, Ultra.
 - **Honesty.** Live, Fixture, or Replay badge. Estimate ledger. Spend caps. Prebaked Replay if the live path fails.
 
 ## Architecture

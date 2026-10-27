@@ -1,8 +1,14 @@
 import type { RepoGraph } from "@/server/shared";
 import { extractSpecifiersTreeSitter, loadTreeSitter } from "./treeSitter";
 
-const FILE_EXTS = [".ts", ".tsx", ".js", ".py"] as const;
-const PARSED_EXT = /\.(?:ts|tsx|js|jsx|mjs|cjs|py)$/i;
+const FILE_EXTS = [
+  ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".py",
+  ".go", ".rs", ".java", ".kt", ".kts", ".cs", ".rb", ".php",
+  ".c", ".h", ".cc", ".cpp", ".cxx", ".hpp", ".swift",
+] as const;
+const TREE_EXT = /\.(?:ts|tsx|js|jsx|mjs|cjs|py)$/i;
+const REGEX_EXT = /\.(?:go|rs|java|kt|kts|cs|rb|php|c|h|cc|cpp|cxx|hpp|swift)$/i;
+const SIBLING_EXT = new Set([".go", ".java", ".kt", ".kts", ".cs"]);
 
 const JS_FROM = /\bimport\s+(?:type\s+)?[\s\S]*?\sfrom\s+['"]([^'"]+)['"]/g;
 const JS_REQUIRE = /\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
@@ -59,7 +65,13 @@ function stripQuotes(spec: string): string {
   return spec.replace(/^['"]|['"]$/g, "");
 }
 
-function extractSpecifiers(source: string): string[] {
+function extOf(filePath: string): string {
+  const base = filePath.slice(filePath.lastIndexOf("/") + 1);
+  const dot = base.lastIndexOf(".");
+  return dot === -1 ? "" : base.slice(dot).toLowerCase();
+}
+
+function jsPyImports(source: string): string[] {
   const specs: string[] = [];
   JS_FROM.lastIndex = 0;
   for (const m of source.matchAll(JS_FROM)) specs.push(m[1]);
@@ -86,6 +98,66 @@ function extractSpecifiers(source: string): string[] {
   return specs;
 }
 
+function goImports(source: string): string[] {
+  const specs: string[] = [];
+  for (const m of source.matchAll(/import\s*\(([^)]*)\)/g)) {
+    for (const line of m[1].split("\n")) {
+      const q = line.match(/"([^"]+)"/);
+      if (q) specs.push(q[1]);
+    }
+  }
+  for (const m of source.matchAll(/import\s+(?:[\w.]+\s+)?"([^"]+)"/g)) specs.push(m[1]);
+  return specs;
+}
+
+function rustImports(source: string): string[] {
+  const specs: string[] = [];
+  for (const m of source.matchAll(/^\s*mod\s+([A-Za-z_][\w]*)/gm)) specs.push(`./${m[1]}`);
+  for (const m of source.matchAll(/^\s*use\s+super::([A-Za-z_][\w]*)/gm)) specs.push(`../${m[1]}`);
+  return specs;
+}
+
+function cIncludes(source: string): string[] {
+  const specs: string[] = [];
+  for (const m of source.matchAll(/^\s*#include\s+"([^"]+)"/gm)) specs.push(m[1].includes("/") || m[1].startsWith(".") ? m[1] : `./${m[1]}`);
+  return specs;
+}
+
+function rubyImports(source: string): string[] {
+  const specs: string[] = [];
+  for (const m of source.matchAll(/require_relative\s+['"]([^'"]+)['"]/g)) specs.push(m[1].startsWith(".") ? m[1] : `./${m[1]}`);
+  for (const m of source.matchAll(/require\s+['"](\.[^'"]+)['"]/g)) specs.push(m[1]);
+  return specs;
+}
+
+function phpImports(source: string): string[] {
+  const specs: string[] = [];
+  for (const m of source.matchAll(/(?:require|include)(?:_once)?\s*\(?\s*['"](\.[^'"]+)['"]/g)) specs.push(m[1]);
+  return specs;
+}
+
+function extractSpecifiers(filePath: string, source: string): string[] {
+  switch (extOf(filePath)) {
+    case ".go":
+      return goImports(source);
+    case ".rs":
+      return rustImports(source);
+    case ".c":
+    case ".h":
+    case ".cc":
+    case ".cpp":
+    case ".cxx":
+    case ".hpp":
+      return cIncludes(source);
+    case ".rb":
+      return rubyImports(source);
+    case ".php":
+      return phpImports(source);
+    default:
+      return jsPyImports(source);
+  }
+}
+
 function isInventedBare(spec: string): boolean {
   if (isRelative(spec)) return false;
   if (spec.startsWith("node:")) return false;
@@ -98,7 +170,8 @@ export function inventedImportNames(files: Record<string, string>, changedPaths:
   for (const path of changedPaths) {
     const source = files[path];
     if (source === undefined) continue;
-    for (const spec of extractSpecifiers(source)) {
+    for (const spec of extractSpecifiers(path, source)) {
+      if (extOf(path) === ".go" && !spec.includes(".")) continue;
       if (isInventedBare(spec)) names.add(spec);
     }
   }
@@ -146,19 +219,39 @@ function assembleGraph(
     }
   }
 
+  for (const fromPath of paths) {
+    const ext = extOf(fromPath);
+    if (!SIBLING_EXT.has(ext)) continue;
+    const from = nodeId(fromPath);
+    const dir = dirOf(fromPath);
+    for (const toPath of paths) {
+      if (toPath === fromPath || extOf(toPath) !== ext || dirOf(toPath) !== dir) continue;
+      const to = nodeId(toPath);
+      const key = `${from}->${to}`;
+      if (edgeKeys.has(key) || from === to) continue;
+      edgeKeys.add(key);
+      edges.push({ from, to, kind: "reference" });
+    }
+  }
+
   edges.sort((a, b) => a.from.localeCompare(b.from) || a.to.localeCompare(b.to));
+
+  const hasTree = paths.some((p) => TREE_EXT.test(p));
+  const hasRegexLang = paths.some((p) => TREE_EXT.test(p) || REGEX_EXT.test(p));
+  const label: RepoGraph["parser"] =
+    parser === "tree-sitter" && hasTree ? "tree-sitter" : hasRegexLang ? "regex" : "none";
 
   return {
     nodes,
     edges,
-    parser: paths.some((p) => PARSED_EXT.test(p)) ? parser : "none",
+    parser: label,
     hops: 1,
     filesKept: paths,
   };
 }
 
 function buildGraphRegex(files: Record<string, string>, changedPaths: string[]): RepoGraph {
-  return assembleGraph(files, changedPaths, (_filePath, source) => extractSpecifiers(source), "regex");
+  return assembleGraph(files, changedPaths, (filePath, source) => extractSpecifiers(filePath, source), "regex");
 }
 
 async function buildGraphTreeSitter(files: Record<string, string>, changedPaths: string[]): Promise<RepoGraph> {
@@ -166,7 +259,10 @@ async function buildGraphTreeSitter(files: Record<string, string>, changedPaths:
   return assembleGraph(
     files,
     changedPaths,
-    (filePath, source) => extractSpecifiersTreeSitter(session, filePath, source),
+    (filePath, source) =>
+      TREE_EXT.test(filePath)
+        ? extractSpecifiersTreeSitter(session, filePath, source)
+        : extractSpecifiers(filePath, source),
     "tree-sitter",
   );
 }
