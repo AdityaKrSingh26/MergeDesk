@@ -8,26 +8,15 @@ Open the app, paste a PR URL or click a fixture, and read the desk.
 
 ## Features
 
-- **Public PR intake.** Paste a public GitHub pull request URL. MergeDesk fetches the issue, the diff, and a snapshot of the repo at the PR head.
-- **Paste a diff.** Drop in an issue plus a unified diff, with up to three screenshots (png, jpg, or webp, 4MB each).
-- **Known desks.** One click for **No cited exceptions**, **Cited exceptions**, or **High-certainty exception**. These are built-in fixtures so the demo works without a live PR.
-- **Progress overlay.** A full-screen blotter follows Fetch, Snapshot, Graph, Pack, Triage, Tavily, Vision, and Gate until the map is ready.
-- **Run header.** PR title, repo and number, a **View on GitHub** link, and a **Live** / **Fixture** / **Replay** badge.
-- **Desk steps.** Horizontal Fetch through Gate, with a brass bar while the run is still going.
-- **Neighborhood canvas.** A zoomable, pannable import and reference map. Pan empty space, wheel or + / − to zoom, Fit neighborhood to reset. Nodes do not drag.
-- **Click to pin.** Click a file on the canvas. Findings cited for that path come forward. The rest dim. Click empty canvas to clear.
-- **Reading order.** Recommended files to open first, with symbol, why, and per-file +/− when counts exist.
-- **Changed files.** A list of paths in the diff with lines added and removed.
-- **Map honesty.** Caption says this is an import / reference neighborhood, not a proven execution trace. Edgeless maps say so. Regex edges are labeled as a heuristic.
-- **Coverage chips.** Snapshot, parser, files kept vs cap, hops, Tavily, vision, plus `budget_capped`, `timed_out`, `pack_truncated`, and `model_parse_failed` when they apply.
-- **Advisory stamp.** Display labels only: **No cited exceptions**, **Cited exceptions**, **High-certainty exception**.
-- **Finding tickets.** Kind, severity, title, body, file path, scan line, and a short quote. Secret, invented surface, scope drift, looks-right logic, and screenshot findings.
-- **Tavily grounding.** Invented-surface claims get a search. Zero hits is labeled as not proof of absence. Source code is never sent to Tavily.
-- **Estimate ledger.** Prompt, completion, and cached tokens per **Nemotron** SKU, plus an estimated USD total at hackathon display rates.
-- **Local graph, small pack.** The import graph is built on the server. Models see a ranked pack, not the whole repo.
-- **Token Factory routing.** Lightning triages, Super drafts findings, Super VL reads screenshots, Ultra escalates on low confidence or a proposed high-certainty exception. Lightning falls back to Nano if missing.
-- **Spend caps.** About $0.12 estimated per live run and $8 estimated per day. Fixtures and Replay do not count as Live spend.
-- **Replay fallback.** If Token Factory is down or the key is missing, the UI loads a prebaked result and the badge is **Replay**.
+- **Intake.** Public GitHub PR URL, pasted issue and diff, or one-click fixtures.
+- **Overlay.** Full-screen Fetch through Gate until the map lands, then a brass bar on the desk.
+- **Canvas.** Zoom and pan the import neighborhood. Click a file to pin its findings and dim the rest.
+- **Reading order.** Start-here files, changed-file +/−, and a caption that this map is not an execution trace.
+- **Stamp.** Advisory labels only: **No cited exceptions**, **Cited exceptions**, **High-certainty exception**.
+- **Tickets.** Kind, path, line, and quote. Coverage chips show what this run actually saw.
+- **Grounding.** Tavily search for invented surfaces. Zero hits is not proof of absence.
+- **Routing.** Local graph, small pack. Nemotron on Token Factory: Lightning, Super, Super VL, Ultra.
+- **Honesty.** Live, Fixture, or Replay badge. Estimate ledger. Spend caps. Prebaked Replay if the live path fails.
 
 ## Setup
 
