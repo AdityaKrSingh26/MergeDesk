@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f3efe6;
+  --foreground: #1a1612;
+  --desk-rule: #cfc4b4;
+  --desk-paper: #faf7f1;
+  --desk-muted: #6b6258;
+  --desk-brass: #8a6a32;
+  --desk-wax: #8b2e2e;
+  --desk-forest: #3d5c45;
+  --desk-map: #e7eef2;
+  --desk-ticket: #f7f1e4;
+  --desk-chip: #efe6d6;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #14110e;
+    --foreground: #ece6dc;
+    --desk-rule: #3a332b;
+    --desk-paper: #1c1915;
+    --desk-muted: #a3988a;
+    --desk-brass: #c4a35a;
+    --desk-wax: #d45c5c;
+    --desk-forest: #7d9b82;
+    --desk-map: #1a2228;
+    --desk-ticket: #241f19;
+    --desk-chip: #2a241c;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+.desk-grid {
+  background-color: var(--desk-map);
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--desk-rule) 55%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--desk-rule) 55%, transparent) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.desk-ticket {
+  background: var(--desk-ticket);
+  border: 1px solid var(--desk-rule);
+  box-shadow: 3px 3px 0 color-mix(in oklab, var(--desk-rule) 80%, transparent);
+}
+
+.mermaid svg {
+  max-width: 100%;
+  height: auto;
+}

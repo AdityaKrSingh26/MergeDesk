@@ -1,0 +1,5 @@
+{
+  "id": "fixture-fix",
+  "intendedStamp": "FIX",
+  "title": "Retry HTTP fetch three times"
+}

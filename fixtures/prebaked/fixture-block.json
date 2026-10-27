@@ -1,0 +1,138 @@
+{
+  "id": "fixture-block",
+  "status": "done",
+  "source": "replay",
+  "coverage": {
+    "source": "replay",
+    "snapshot": "full",
+    "parser": "tree-sitter",
+    "graphFilesKept": 2,
+    "graphFileCap": 40,
+    "hops": 1,
+    "tavily": "ok",
+    "vision": "skipped",
+    "budgetCapped": false,
+    "timedOut": false,
+    "packTruncated": true
+  },
+  "map": {
+    "size": {
+      "linesAdded": 1736,
+      "linesRemoved": 36,
+      "fileCount": 4,
+      "languages": {
+        "ts": 4
+      },
+      "concernCount": 3
+    },
+    "startHere": [
+      {
+        "path": "src/invoices.ts",
+        "symbol": "exportInvoicesCsv",
+        "why": "CSV export requested by the issue"
+      }
+    ],
+    "concerns": [
+      {
+        "name": "secret",
+        "paths": [
+          "src/auth.ts"
+        ]
+      },
+      {
+        "name": "invented package",
+        "paths": [
+          "src/invoices.ts"
+        ]
+      },
+      {
+        "name": "dashboard scope",
+        "paths": [
+          "src/dashboard.ts"
+        ]
+      }
+    ],
+    "functions": [
+      {
+        "name": "exportInvoicesCsv",
+        "path": "src/invoices.ts",
+        "job": "write invoice CSV"
+      },
+      {
+        "name": "formatInvoiceRow",
+        "path": "src/invoiceCsv.ts",
+        "job": "format one CSV row"
+      }
+    ],
+    "mermaid": "graph TD\n  src_auth_ts[\"auth.ts\"]\n  src_invoices_ts[\"invoices.ts\"]\n  style src_auth_ts fill:#fde68a\n  style src_invoices_ts fill:#fde68a",
+    "mermaidCaption": "Import / reference neighborhood, not a proven execution trace.",
+    "blastRadius": {
+      "neighborsNotInDiff": [],
+      "testsAdded": [],
+      "testsMissing": [
+        "src/invoices.test.ts"
+      ],
+      "envKeys": []
+    },
+    "multipleJobs": true
+  },
+  "verdict": {
+    "stamp": "BLOCK",
+    "displayStamp": "High-certainty exception",
+    "findings": [
+      {
+        "id": "f-secret",
+        "kind": "secret",
+        "severity": "high",
+        "confidence": 1,
+        "title": "AWS access key in patch",
+        "body": "Added line contains an AKIA access key id.",
+        "evidence": [
+          {
+            "kind": "file",
+            "path": "src/auth.ts",
+            "startLine": 11,
+            "quote": "export const awsKey = \"AKIAIOSFODNN7EXAMPLE\";"
+          }
+        ],
+        "model": "regex",
+        "cited": true
+      },
+      {
+        "id": "f-invented",
+        "kind": "invented_surface",
+        "severity": "high",
+        "confidence": 0.8,
+        "title": "Unknown package foo_payments_sdk",
+        "body": "search: 0 results (not proof of absence)",
+        "evidence": [
+          {
+            "kind": "tavily",
+            "quote": "search: 0 results (not proof of absence)",
+            "tavilyHits": 0
+          }
+        ],
+        "model": "tavily",
+        "cited": true
+      }
+    ],
+    "residualNotes": [],
+    "coverage": {
+      "source": "replay",
+      "snapshot": "full",
+      "parser": "tree-sitter",
+      "graphFilesKept": 2,
+      "graphFileCap": 40,
+      "hops": 1,
+      "tavily": "ok",
+      "vision": "skipped",
+      "budgetCapped": false,
+      "timedOut": false,
+      "packTruncated": true
+    },
+    "ledger": [],
+    "usdEstimateTotal": 0
+  },
+  "ledger": [],
+  "createdAt": 0
+}

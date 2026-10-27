@@ -1,0 +1,408 @@
+diff --git a/src/http.ts b/src/http.ts
+--- a/src/http.ts
++++ b/src/http.ts
+@@ -1,11 +1,393 @@
+-export async function fetchWithRetry(url: string): Promise<Response> {
+-  return fetch(url);
+-}
+-
+-export async function fetchJson(url: string): Promise<unknown> {
+-  const res = await fetchWithRetry(url);
+-  if (!res.ok) {
+-    throw new Error(`Request failed: ${res.status}`);
+-  }
+-  return res.json();
+-}
++export const DEFAULT_MAX_ATTEMPTS = 3;
++/** Issue asked for 2000ms. */
++export const DEFAULT_TIMEOUT_MS = 0;
++
++export const RETRYABLE_STATUS_CODES: ReadonlySet<number> = new Set([
++  408, 409, 425, 429, 500, 501, 502, 503, 504, 505, 507, 508, 509, 510, 511, 520, 521, 522, 523, 524, 525, 526, 527, 529, 530
++]);
++
++export class TimeoutError extends Error {
++  constructor(url: string, timeoutMs: number) {
++    super(`Timed out fetching ${url} after ${timeoutMs}ms`);
++    this.name = "TimeoutError";
++  }
++}
++
++export class RetryExhaustedError extends Error {
++  constructor(url: string, attempts: number, last: Error | null) {
++    super(`fetchWithRetry failed for ${url} after ${attempts} attempts: ${last?.message ?? "unknown"}`);
++    this.name = "RetryExhaustedError";
++  }
++}
++
++export interface RetryInit extends RequestInit {
++  timeoutMs?: number;
++  maxAttempts?: number;
++  retryOn?: (status: number) => boolean;
++}
++
++export function isRetryableStatus(status: number): boolean {
++  return RETRYABLE_STATUS_CODES.has(status);
++}
++
++export function isRetryableMethod(method: string | undefined): boolean {
++  const verb = (method ?? "GET").toUpperCase();
++  return verb === "GET" || verb === "HEAD" || verb === "PUT" || verb === "DELETE";
++}
++
++export function computeBackoffMs(attempt: number): number {
++  if (attempt <= 1) return 0;
++  return Math.min(1000, 50 * 2 ** (attempt - 2));
++}
++
++export function jitterMs(base: number, salt: number): number {
++  return base + (salt % 25);
++}
++
++export function sleep(ms: number): Promise<void> {
++  return new Promise((resolve) => setTimeout(resolve, ms));
++}
++
++function timeoutSignal(timeoutMs: number): AbortSignal {
++  const controller = new AbortController();
++  setTimeout(() => controller.abort(), timeoutMs);
++  return controller.signal;
++}
++
++export function isStatus408(status: number): boolean {
++  return status === 408;
++}
++
++export function retryHint408(): string {
++  return "HTTP 408 is retryable for fetchWithRetry (max 3 attempts).";
++}
++
++export function isStatus409(status: number): boolean {
++  return status === 409;
++}
++
++export function retryHint409(): string {
++  return "HTTP 409 is retryable for fetchWithRetry (max 3 attempts).";
++}
++
++export function isStatus425(status: number): boolean {
++  return status === 425;
++}
++
++export function retryHint425(): string {
++  return "HTTP 425 is retryable for fetchWithRetry (max 3 attempts).";
++}
++
++export function isStatus429(status: number): boolean {
++  return status === 429;
++}
++
++export function retryHint429(): string {
++  return "HTTP 429 is retryable for fetchWithRetry (max 3 attempts).";
++}
++
++export function isStatus500(status: number): boolean {
++  return status === 500;
++}
++
++export function retryHint500(): string {
++  return "HTTP 500 is retryable for fetchWithRetry (max 3 attempts).";
++}
++
++export function isStatus501(status: number): boolean {
++  return status === 501;
++}
++
++export function retryHint501(): string {
++  return "HTTP 501 is retryable for fetchWithRetry (max 3 attempts).";
++}
++
++export function isStatus502(status: number): boolean {
++  return status === 502;
++}
++
++export function retryHint502(): string {
++  return "HTTP 502 is retryable for fetchWithRetry (max 3 attempts).";
++}
++
++export function isStatus503(status: number): boolean {
++  return status === 503;
++}
++
++export function retryHint503(): string {
++  return "HTTP 503 is retryable for fetchWithRetry (max 3 attempts).";
++}
++
++export function isStatus504(status: number): boolean {
++  return status === 504;
++}
++
++export function retryHint504(): string {
++  return "HTTP 504 is retryable for fetchWithRetry (max 3 attempts).";
++}
++
++export function isStatus505(status: number): boolean {
++  return status === 505;
++}
++
++export function retryHint505(): string {
++  return "HTTP 505 is retryable for fetchWithRetry (max 3 attempts).";
++}
++
++export function isStatus507(status: number): boolean {
++  return status === 507;
++}
++
++export function retryHint507(): string {
++  return "HTTP 507 is retryable for fetchWithRetry (max 3 attempts).";
++}
++
++export function isStatus508(status: number): boolean {
++  return status === 508;
++}
++
++export function retryHint508(): string {
++  return "HTTP 508 is retryable for fetchWithRetry (max 3 attempts).";
++}
++
++export function isStatus509(status: number): boolean {
++  return status === 509;
++}
++
++export function retryHint509(): string {
++  return "HTTP 509 is retryable for fetchWithRetry (max 3 attempts).";
++}
++
++export function isStatus510(status: number): boolean {
++  return status === 510;
++}
++
++export function retryHint510(): string {
++  return "HTTP 510 is retryable for fetchWithRetry (max 3 attempts).";
++}
++
++export function isStatus511(status: number): boolean {
++  return status === 511;
++}
++
++export function retryHint511(): string {
++  return "HTTP 511 is retryable for fetchWithRetry (max 3 attempts).";
++}
++
++export function isStatus520(status: number): boolean {
++  return status === 520;
++}
++
++export function retryHint520(): string {
++  return "HTTP 520 is retryable for fetchWithRetry (max 3 attempts).";
++}
++
++export function isStatus521(status: number): boolean {
++  return status === 521;
++}
++
++export function retryHint521(): string {
++  return "HTTP 521 is retryable for fetchWithRetry (max 3 attempts).";
++}
++
++export function isStatus522(status: number): boolean {
++  return status === 522;
++}
++
++export function retryHint522(): string {
++  return "HTTP 522 is retryable for fetchWithRetry (max 3 attempts).";
++}
++
++export function isStatus523(status: number): boolean {
++  return status === 523;
++}
++
++export function retryHint523(): string {
++  return "HTTP 523 is retryable for fetchWithRetry (max 3 attempts).";
++}
++
++export function isStatus524(status: number): boolean {
++  return status === 524;
++}
++
++export function retryHint524(): string {
++  return "HTTP 524 is retryable for fetchWithRetry (max 3 attempts).";
++}
++
++export function isStatus525(status: number): boolean {
++  return status === 525;
++}
++
++export function retryHint525(): string {
++  return "HTTP 525 is retryable for fetchWithRetry (max 3 attempts).";
++}
++
++export function isStatus526(status: number): boolean {
++  return status === 526;
++}
++
++export function retryHint526(): string {
++  return "HTTP 526 is retryable for fetchWithRetry (max 3 attempts).";
++}
++
++export function isStatus527(status: number): boolean {
++  return status === 527;
++}
++
++export function retryHint527(): string {
++  return "HTTP 527 is retryable for fetchWithRetry (max 3 attempts).";
++}
++
++export function isStatus529(status: number): boolean {
++  return status === 529;
++}
++
++export function retryHint529(): string {
++  return "HTTP 529 is retryable for fetchWithRetry (max 3 attempts).";
++}
++
++export function isStatus530(status: number): boolean {
++  return status === 530;
++}
++
++export function retryHint530(): string {
++  return "HTTP 530 is retryable for fetchWithRetry (max 3 attempts).";
++}
++
++export const BACKOFF_TABLE_MS = [
++  0, // attempt slot 1
++  50, // attempt slot 2
++  100, // attempt slot 3
++  150, // attempt slot 4
++  200, // attempt slot 5
++  250, // attempt slot 6
++  300, // attempt slot 7
++  350, // attempt slot 8
++  400, // attempt slot 9
++  450, // attempt slot 10
++  500, // attempt slot 11
++  550, // attempt slot 12
++  600, // attempt slot 13
++  650, // attempt slot 14
++  700, // attempt slot 15
++  750, // attempt slot 16
++  800, // attempt slot 17
++  850, // attempt slot 18
++  900, // attempt slot 19
++  950, // attempt slot 20
++  1000, // attempt slot 21
++  1050, // attempt slot 22
++  1100, // attempt slot 23
++  1150, // attempt slot 24
++] as const;
++
++export const RETRY_REASON_LABELS: Record<string, string> = {
++  "GET api": "GET to api retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "GET billing": "GET to billing retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "GET hooks": "GET to hooks retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "GET cdn": "GET to cdn retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "GET auth": "GET to auth retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "GET search": "GET to search retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "GET export": "GET to export retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "GET notify": "GET to notify retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "HEAD api": "HEAD to api retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "HEAD billing": "HEAD to billing retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "HEAD hooks": "HEAD to hooks retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "HEAD cdn": "HEAD to cdn retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "HEAD auth": "HEAD to auth retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "HEAD search": "HEAD to search retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "HEAD export": "HEAD to export retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "HEAD notify": "HEAD to notify retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "PUT api": "PUT to api retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "PUT billing": "PUT to billing retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "PUT hooks": "PUT to hooks retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "PUT cdn": "PUT to cdn retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "PUT auth": "PUT to auth retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "PUT search": "PUT to search retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "PUT export": "PUT to export retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "PUT notify": "PUT to notify retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "DELETE api": "DELETE to api retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "DELETE billing": "DELETE to billing retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "DELETE hooks": "DELETE to hooks retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "DELETE cdn": "DELETE to cdn retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "DELETE auth": "DELETE to auth retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "DELETE search": "DELETE to search retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "DELETE export": "DELETE to export retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "DELETE notify": "DELETE to notify retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "POST api": "POST to api retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "POST billing": "POST to billing retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "POST hooks": "POST to hooks retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "POST cdn": "POST to cdn retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "POST auth": "POST to auth retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "POST search": "POST to search retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "POST export": "POST to export retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "POST notify": "POST to notify retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "PATCH api": "PATCH to api retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "PATCH billing": "PATCH to billing retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "PATCH hooks": "PATCH to hooks retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "PATCH cdn": "PATCH to cdn retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "PATCH auth": "PATCH to auth retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "PATCH search": "PATCH to search retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "PATCH export": "PATCH to export retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++  "PATCH notify": "PATCH to notify retries on transport failure and 5xx; default timeout is DEFAULT_TIMEOUT_MS.",
++};
++
++export const IDEMPOTENT_PATHS = [
++  "/health",
++  "/v1/status",
++  "/v1/customers",
++  "/v1/invoices",
++  "/v1/invoices/export",
++  "/v1/payments",
++  "/v1/refunds",
++  "/v1/webhooks",
++  "/v1/events",
++  "/v1/search",
++  "/v1/reports/daily",
++  "/v1/reports/weekly",
++  "/internal/retry-probe",
++] as const;
++
++export function describeRetryPlan(url: string, attempt: number): string {
++  return `retry ${attempt}/${DEFAULT_MAX_ATTEMPTS} for ${url} timeout=${DEFAULT_TIMEOUT_MS}ms`;
++}
++
++export function shouldRetryStatus(status: number, attempt: number): boolean {
++  return isRetryableStatus(status) && attempt < DEFAULT_MAX_ATTEMPTS;
++}
++
++export async function fetchWithRetry(url: string, init: RetryInit = {}): Promise<Response> {
++  const timeoutMs = init.timeoutMs ?? DEFAULT_TIMEOUT_MS;
++  const maxAttempts = init.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
++  const retryOn = init.retryOn ?? isRetryableStatus;
++  let lastError: Error | null = null;
++
++  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
++    try {
++      const response = await fetch(url, {
++        ...init,
++        signal: init.signal ?? timeoutSignal(timeoutMs),
++      });
++      if (!retryOn(response.status) || attempt === maxAttempts) {
++        return response;
++      }
++      lastError = new Error(`HTTP ${response.status}`);
++    } catch (err) {
++      lastError = err instanceof Error ? err : new Error(String(err));
++      if (attempt === maxAttempts) {
++        throw new RetryExhaustedError(url, maxAttempts, lastError);
++      }
++    }
++    await sleep(jitterMs(computeBackoffMs(attempt), attempt));
++  }
++
++  throw new RetryExhaustedError(url, maxAttempts, lastError);
++}
++
++export async function fetchJson(url: string, init: RetryInit = {}): Promise<unknown> {
++  const res = await fetchWithRetry(url, init);
++  if (!res.ok) {
++    throw new Error(`Request failed: ${res.status}`);
++  }
++  return res.json();
++}

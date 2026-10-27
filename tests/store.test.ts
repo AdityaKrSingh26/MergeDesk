@@ -1,0 +1,33 @@
+import { describe, expect, it } from "vitest";
+import { createStore } from "@/server/runs";
+
+describe("store", () => {
+  it("returns prebaked fixture-block as Replay", () => {
+    const s = createStore();
+    const run = s.get("fixture-block");
+    expect(run?.source).toBe("replay");
+    expect(run?.verdict?.stamp).toBe("BLOCK");
+    expect(run?.verdict?.displayStamp).toBe("High-certainty exception");
+    expect(run?.coverage).toBeDefined();
+  });
+  it("evicts the oldest run after 200 live puts", () => {
+    const s = createStore();
+    for (let i = 0; i < 201; i++) {
+      s.put({
+        id: `r${i}`,
+        status: "done",
+        source: "live",
+        coverage: {
+          source: "live", snapshot: "patch-only", parser: "none",
+          graphFilesKept: 0, graphFileCap: 40, hops: 1,
+          tavily: "skipped", vision: "skipped",
+          budgetCapped: false, timedOut: false, packTruncated: false,
+        },
+        ledger: [],
+        createdAt: i,
+      });
+    }
+    expect(s.get("r0")).toBeUndefined();
+    expect(s.get("r200")).toBeDefined();
+  });
+});

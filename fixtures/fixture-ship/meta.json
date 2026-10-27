@@ -1,0 +1,5 @@
+{
+  "id": "fixture-ship",
+  "intendedStamp": "SHIP",
+  "title": "Add clamp() helper and unit test"
+}

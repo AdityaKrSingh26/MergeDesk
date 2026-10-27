@@ -1,0 +1,109 @@
+{
+  "id": "fixture-fix",
+  "status": "done",
+  "source": "replay",
+  "coverage": {
+    "source": "replay",
+    "snapshot": "full",
+    "parser": "tree-sitter",
+    "graphFilesKept": 1,
+    "graphFileCap": 40,
+    "hops": 1,
+    "tavily": "skipped",
+    "vision": "skipped",
+    "budgetCapped": false,
+    "timedOut": false,
+    "packTruncated": false
+  },
+  "map": {
+    "size": {
+      "linesAdded": 393,
+      "linesRemoved": 11,
+      "fileCount": 1,
+      "languages": {
+        "ts": 1
+      },
+      "concernCount": 1
+    },
+    "startHere": [
+      {
+        "path": "src/http.ts",
+        "symbol": "fetchWithRetry",
+        "why": "retry helper named in the issue"
+      }
+    ],
+    "concerns": [
+      {
+        "name": "timeout",
+        "paths": [
+          "src/http.ts"
+        ]
+      }
+    ],
+    "functions": [
+      {
+        "name": "fetchWithRetry",
+        "path": "src/http.ts",
+        "job": "retry HTTP fetches"
+      },
+      {
+        "name": "fetchJson",
+        "path": "src/http.ts",
+        "job": "JSON wrapper around fetchWithRetry"
+      }
+    ],
+    "mermaid": "graph TD\n  src_http_ts[\"http.ts\"]\n  style src_http_ts fill:#fde68a",
+    "mermaidCaption": "Import / reference neighborhood, not a proven execution trace.",
+    "blastRadius": {
+      "neighborsNotInDiff": [],
+      "testsAdded": [],
+      "testsMissing": [
+        "src/http.test.ts"
+      ],
+      "envKeys": []
+    },
+    "multipleJobs": false
+  },
+  "verdict": {
+    "stamp": "FIX",
+    "displayStamp": "Cited exceptions",
+    "findings": [
+      {
+        "id": "f-timeout",
+        "kind": "looks_right_logic",
+        "severity": "medium",
+        "confidence": 0.8,
+        "title": "Retry timeout is 0ms, not 2000ms",
+        "body": "Issue asked for a 2000ms default timeout; DEFAULT_TIMEOUT_MS is 0.",
+        "evidence": [
+          {
+            "kind": "file",
+            "path": "src/http.ts",
+            "startLine": 3,
+            "quote": "export const DEFAULT_TIMEOUT_MS = 0;"
+          }
+        ],
+        "model": "replay",
+        "cited": true
+      }
+    ],
+    "residualNotes": [],
+    "coverage": {
+      "source": "replay",
+      "snapshot": "full",
+      "parser": "tree-sitter",
+      "graphFilesKept": 1,
+      "graphFileCap": 40,
+      "hops": 1,
+      "tavily": "skipped",
+      "vision": "skipped",
+      "budgetCapped": false,
+      "timedOut": false,
+      "packTruncated": false
+    },
+    "ledger": [],
+    "usdEstimateTotal": 0
+  },
+  "ledger": [],
+  "createdAt": 0
+}

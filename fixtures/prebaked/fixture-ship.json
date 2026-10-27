@@ -1,0 +1,85 @@
+{
+  "id": "fixture-ship",
+  "status": "done",
+  "source": "replay",
+  "coverage": {
+    "source": "replay",
+    "snapshot": "full",
+    "parser": "tree-sitter",
+    "graphFilesKept": 2,
+    "graphFileCap": 40,
+    "hops": 1,
+    "tavily": "skipped",
+    "vision": "skipped",
+    "budgetCapped": false,
+    "timedOut": false,
+    "packTruncated": false
+  },
+  "map": {
+    "size": {
+      "linesAdded": 146,
+      "linesRemoved": 5,
+      "fileCount": 2,
+      "languages": {
+        "ts": 2
+      },
+      "concernCount": 0
+    },
+    "startHere": [
+      {
+        "path": "src/clamp.ts",
+        "symbol": "clamp",
+        "why": "issue asks for clamp(n, min, max)"
+      }
+    ],
+    "concerns": [],
+    "functions": [
+      {
+        "name": "clamp",
+        "path": "src/clamp.ts",
+        "job": "clamp n to [min, max]"
+      },
+      {
+        "name": "abs",
+        "path": "src/math.ts",
+        "job": "absolute value used by clamp helpers"
+      }
+    ],
+    "mermaid": "graph TD\n  src_clamp_ts[\"clamp.ts\"]\n  src_math_ts[\"math.ts\"]\n  src_clamp_ts --> src_math_ts\n  style src_clamp_ts fill:#fde68a\n  style src_math_ts fill:#e0e7ff",
+    "mermaidCaption": "Import / reference neighborhood, not a proven execution trace.",
+    "blastRadius": {
+      "neighborsNotInDiff": [
+        "src/math.ts"
+      ],
+      "testsAdded": [
+        "src/clamp.test.ts"
+      ],
+      "testsMissing": [],
+      "envKeys": []
+    },
+    "multipleJobs": false
+  },
+  "verdict": {
+    "stamp": "SHIP",
+    "displayStamp": "No cited exceptions",
+    "findings": [],
+    "residualNotes": [],
+    "coverage": {
+      "source": "replay",
+      "snapshot": "full",
+      "parser": "tree-sitter",
+      "graphFilesKept": 2,
+      "graphFileCap": 40,
+      "hops": 1,
+      "tavily": "skipped",
+      "vision": "skipped",
+      "budgetCapped": false,
+      "timedOut": false,
+      "packTruncated": false
+    },
+    "ledger": [],
+    "usdEstimateTotal": 0
+  },
+  "ledger": [],
+  "createdAt": 0
+}
