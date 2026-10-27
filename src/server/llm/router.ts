@@ -148,7 +148,7 @@ export function parseModelJson(text: string): ParseModelJsonResult {
     if (typeof rec.mermaid !== "string") return { ok: false };
     if (!Array.isArray(rec.findings)) return { ok: false };
     if (!Array.isArray(rec.residualNotes)) return { ok: false };
-    return { ok: true, value: rec as SuperJson };
+    return { ok: true, value: rec as unknown as SuperJson };
   } catch {
     return { ok: false };
   }

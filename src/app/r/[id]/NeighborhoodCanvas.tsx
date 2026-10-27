@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, type KeyboardEvent } from "react";
+import { useMemo, type JSX, type KeyboardEvent } from "react";
 import dagre from "@dagrejs/dagre";
 import {
   Background,

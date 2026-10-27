@@ -1,5 +1,6 @@
 "use client";
 
+import type { JSX } from "react";
 import { OVERLAY_WORDMARK, type ProgressStep } from "@/server/shared";
 
 export const OVERLAY_MIN_MS = 400;
