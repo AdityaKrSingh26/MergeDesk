@@ -126,6 +126,17 @@ describe("ultraSkip", () => {
     expect(finding?.evidence[0]?.quote.startsWith(IMAGE_NOT_HEAD)).toBe(true);
   });
 
+  it("does not prefix IMAGE_NOT_HEAD twice", () => {
+    const finding = findingFromSuperVl({
+      contradicts: true,
+      quote: `${IMAGE_NOT_HEAD} expected 200 got 500`,
+      confidence: 0.7,
+    });
+    const quote = finding?.evidence[0]?.quote ?? "";
+    expect(quote.startsWith(IMAGE_NOT_HEAD)).toBe(true);
+    expect(quote.indexOf(IMAGE_NOT_HEAD)).toBe(quote.lastIndexOf(IMAGE_NOT_HEAD));
+  });
+
   it("skips Ultra and sets coverage.timedOut when elapsed exceeds 240s", async () => {
     process.env.NEBIUS_API_KEY = "test";
     const models: string[] = [];

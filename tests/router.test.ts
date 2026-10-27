@@ -7,6 +7,7 @@ import {
   runSuper,
   runSuperVl,
   runTriage,
+  runUltra,
   SYSTEM_PROMPT,
   wrapUntrusted,
 } from "@/server/llm";
@@ -103,6 +104,30 @@ describe("router", () => {
     expect(bodies[1].extra_body).toEqual({
       chat_template_kwargs: { enable_thinking: false },
     });
+    expect(bodies[1].max_tokens).toBe(4096);
+  });
+
+  it("retries Ultra with thinking off after invalid JSON", async () => {
+    const bodies: Array<Record<string, unknown>> = [];
+    let n = 0;
+    const client = {
+      chat: {
+        completions: {
+          create: async (body: Record<string, unknown>) => {
+            bodies.push(body);
+            n += 1;
+            const content = n === 1 ? "not-json" : VALID_SUPER;
+            return { choices: [{ message: { content } }], usage: fakeUsage() };
+          },
+        },
+      },
+    };
+    const result = await runUltra({ pack: emptyPack(), client: client as never });
+    expect(result.ok).toBe(true);
+    expect(bodies).toHaveLength(2);
+    expect(bodies[0].model).toBe(MODELS.ultra);
+    expect(bodies[0].chat_template_kwargs).toEqual({ enable_thinking: true });
+    expect(bodies[1].chat_template_kwargs).toEqual({ enable_thinking: false });
     expect(bodies[1].max_tokens).toBe(4096);
   });
 

@@ -62,7 +62,7 @@ export async function searchClaims(
           max_results: MAX_RESULTS,
         }),
       });
-      if (!res.ok) return { evidence: [], status: "failed" };
+      if (!res.ok) return { evidence, status: "failed" };
 
       const results = resultList(await res.json());
       if (results.length === 0) {
@@ -86,7 +86,7 @@ export async function searchClaims(
           headers: authHeaders(),
           body: JSON.stringify({ urls: [url] }),
         });
-        if (!extractRes.ok) return { evidence: [], status: "failed" };
+        if (!extractRes.ok) return { evidence, status: "failed" };
         await extractRes.json();
       }
 

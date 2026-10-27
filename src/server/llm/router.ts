@@ -115,7 +115,9 @@ export function shouldCallUltra(args: {
 
 export function findingFromSuperVl(payload: SuperVlJson, imageUrl?: string): Finding | undefined {
   if (!payload.contradicts || payload.confidence < 0.6) return undefined;
-  const quote = `${IMAGE_NOT_HEAD} ${payload.quote}`.slice(0, 240);
+  const quote = payload.quote.startsWith(IMAGE_NOT_HEAD)
+    ? payload.quote.slice(0, 240)
+    : `${IMAGE_NOT_HEAD} ${payload.quote}`.slice(0, 240);
   return {
     id: "visual-0",
     kind: "visual_contradiction",
@@ -361,16 +363,20 @@ export async function runUltra(args: { pack: ContextPack; client: ChatClient }):
   const messages = buildMessages(clipped, SUPER_JSON_HINT);
   const ledger: TokenLine[] = [];
   for (let attempt = 0; attempt < 2; attempt++) {
-    const extra_body: ExtraBody = {
-      reasoning_budget: 2048,
-      chat_template_kwargs: { enable_thinking: true },
-    };
+    const retry = attempt > 0;
+    const extra_body: ExtraBody = retry
+      ? { chat_template_kwargs: { enable_thinking: false } }
+      : {
+          reasoning_budget: 2048,
+          chat_template_kwargs: { enable_thinking: true },
+        };
     const resp = await args.client.chat.completions.create({
       model: MODELS.ultra,
       messages,
       response_format: { type: "json_object" },
       extra_body,
       ...extra_body,
+      ...(retry ? { max_tokens: SUPER_RETRY_MAX_TOKENS } : {}),
     });
     ledger.push(tokenLine(MODELS.ultra, resp.usage));
     const parsed = parseModelJson(contentOf(resp));

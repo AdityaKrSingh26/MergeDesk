@@ -1,0 +1,15 @@
+name: "MergeDesk (advisory)"
+description: "Post one advisory PR comment and an always-neutral check. Not a merge gate."
+inputs:
+  mergedesk-url:
+    description: "Public MergeDesk origin used to POST /api/runs"
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Advisory comment and neutral check
+      shell: bash
+      env:
+        MERGEDESK_URL: ${{ inputs.mergedesk-url }}
+        GITHUB_TOKEN: ${{ github.token }}
+      run: node "${{ github.action_path }}/run.mjs"

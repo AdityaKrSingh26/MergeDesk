@@ -1,0 +1,21 @@
+name: MergeDesk
+
+on:
+  pull_request:
+
+permissions:
+  pull-requests: write
+  checks: write
+  contents: read
+
+jobs:
+  mergedesk:
+    name: MergeDesk
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: MergeDesk (advisory)
+        uses: ./.github/actions/mergedesk
+        with:
+          mergedesk-url: ${{ secrets.MERGEDESK_URL }}

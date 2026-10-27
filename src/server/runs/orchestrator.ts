@@ -375,10 +375,13 @@ function modelFindings(
     const rec = item as Record<string, unknown>;
     if (rec.kind === "secret") continue;
     if (rec.kind === "invented_surface" && skipPackages && skipPackages.size > 0) {
-      const blob = JSON.stringify(rec);
+      const blob = [rec.title, rec.body, JSON.stringify(rec.evidence ?? [])].join("\n");
       let dup = false;
       for (const name of skipPackages) {
-        if (name && blob.includes(name)) {
+        if (!name) continue;
+        const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const re = new RegExp(`(?:^|[^A-Za-z0-9_-])${escaped}(?:$|[^A-Za-z0-9_-])`);
+        if (re.test(blob)) {
           dup = true;
           break;
         }

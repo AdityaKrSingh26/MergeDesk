@@ -193,3 +193,15 @@ pnpm start
 ```
 
 Use the same env as `.env.example`.
+
+Live runs are written to `data/runs` (or `MERGEDESK_DATA_DIR`, or `/tmp/mergedesk-runs` on Vercel) so a restart can still open `/r/{id}`. Fixtures do not need that.
+
+## GitHub Action
+
+On `pull_request` the composite action POSTs the PR URL to your hosted MergeDesk (`wait: true`), then posts one advisory comment and a **neutral** check named `MergeDesk (advisory)`. The job always exits 0. It is not a merge gate.
+
+Set a repo secret `MERGEDESK_URL` to the public origin (no trailing slash), for example `https://your-app.onrender.com`. Token Factory and Tavily keys stay on the MergeDesk server, not in GitHub Actions.
+
+## License
+
+MIT. See `LICENSE`.

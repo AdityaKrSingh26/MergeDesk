@@ -30,6 +30,26 @@ describe("searchClaims", () => {
     expect(evidence).toEqual([]);
   });
 
+  it("keeps earlier 0-hit evidence when a later search fails", async () => {
+    let n = 0;
+    const fetchImpl = async () => {
+      n += 1;
+      if (n === 1) return new Response(JSON.stringify({ results: [] }), { status: 200 });
+      return new Response("nope", { status: 500 });
+    };
+    const { status, evidence } = await searchClaims(
+      [
+        { type: "package", query: "first", packageName: "first" },
+        { type: "package", query: "second", packageName: "second" },
+      ],
+      fetchImpl,
+    );
+    expect(status).toBe("failed");
+    expect(evidence).toHaveLength(1);
+    expect(evidence[0].query).toBe("first");
+    expect(evidence[0].tavilyHits).toBe(0);
+  });
+
   it("marks failed when fetch throws", async () => {
     const fetchImpl = async () => {
       throw new Error("network");

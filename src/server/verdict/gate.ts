@@ -29,6 +29,7 @@ function isFindingKind(kind: string | undefined): kind is FindingKind {
 
 export function gate(input: GateInput): Verdict {
   const findings: Finding[] = [];
+  const seen = new Set<string>();
 
   for (let index = 0; index < input.rawFindings.length; index++) {
     const raw = input.rawFindings[index];
@@ -41,7 +42,7 @@ export function gate(input: GateInput): Verdict {
       if (!evidence.some((item) => item.kind === "tavily" && item.tavilyHits === 0)) continue;
     }
 
-    findings.push({
+    const finding: Finding = {
       id: raw.id ?? `f-${index}`,
       kind: raw.kind,
       severity: raw.severity ?? "medium",
@@ -54,7 +55,12 @@ export function gate(input: GateInput): Verdict {
       })),
       model: raw.model ?? "",
       cited: true,
-    });
+    };
+    const ev = finding.evidence[0];
+    const key = `${finding.kind}|${finding.model}|${ev?.path ?? ""}|${ev?.startLine ?? ""}|${ev?.quote ?? finding.title}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    findings.push(finding);
   }
 
   let stamp: VerdictStamp = "SHIP";

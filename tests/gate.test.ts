@@ -151,6 +151,19 @@ describe("gate", () => {
     expect(regexSecret.stamp).toBe("BLOCK");
   });
 
+  it("drops a duplicate regex secret with the same path, line, and quote", () => {
+    const v = gate({
+      rawFindings: [
+        { kind: "secret", severity: "high", confidence: 1, title: "Secret in patch", body: "", evidence: [fileEv], model: "regex", cited: true },
+        { kind: "secret", severity: "high", confidence: 1, title: "Secret in patch", body: "", evidence: [fileEv], model: "regex", cited: true },
+      ],
+      coverage: makeCoverage(),
+      ledger: [],
+    });
+    expect(v.findings.filter((f) => f.kind === "secret")).toHaveLength(1);
+    expect(v.stamp).toBe("BLOCK");
+  });
+
   it("omits residualNotes on FIX", () => {
     const v = gate({
       rawFindings: [{ kind: "looks_right_logic", severity: "medium", confidence: 0.6, title: "retry", body: "", evidence: [fileEv], model: "super", cited: true }],
