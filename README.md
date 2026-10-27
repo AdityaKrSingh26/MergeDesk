@@ -20,92 +20,96 @@ Open the app, paste a PR URL or click a fixture, and read the desk.
 
 ## Architecture
 
-BLOCK is only a regex secret. Only VerdictGate sets the stamp. The hosted UI draws the neighborhood with React Flow. Mermaid is still generated for comments, not for the desk.
-
-**System**
+A run is one desk. You start it from a public GitHub PR, a pasted issue and diff, or a known fixture. MergeDesk builds a file neighborhood, asks Nemotron on Token Factory, and may search Tavily. You see an overlay until the map is ready, then the canvas, then an advisory stamp with tickets.
 
 ```mermaid
-flowchart TB
-  subgraph Client
-    Intake["Intake /"]
-    Desk["Run /r/id"]
-  end
+erDiagram
+    REVIEWER ||--o{ RUN : starts
+    RUN }o--o| GITHUB_PR : "reads public PR"
+    RUN }o--o| PASTE : "or pasted diff"
+    RUN }o--o| FIXTURE : "or known desk"
+    RUN ||--|| DESK : opens
+    DESK ||--|| OVERLAY : "until the map"
+    DESK ||--|| CANVAS : "then neighborhood"
+    CANVAS ||--|{ FILE : shows
+    RUN ||--|| STAMP : gets
+    STAMP ||--o{ FINDING : lists
+    FINDING }o--o{ FILE : cites
+    RUN }o--|| NEMOTRON : asks
+    NEMOTRON }o--|| TOKEN_FACTORY : "hosted on"
+    FINDING }o--o| TAVILY : "may search"
+    RUN ||--|| COVERAGE : "records what was seen"
+    RUN ||--|| ESTIMATE : "shows token cost"
 
-  subgraph API["Next.js"]
-    POST["POST /api/runs"]
-    GET["GET /api/runs/id"]
-    SSE["GET /api/runs/id/events"]
-  end
-
-  subgraph Orch["RunOrchestrator"]
-    Fetch["Fetch"]
-    Snapshot["Snapshot"]
-    Graph["Graph local"]
-    Pack["Pack"]
-    Triage["Triage Lightning"]
-    Tavily["Tavily"]
-    Super["Super findings"]
-    Vision["Super VL"]
-    Ultra["Ultra optional"]
-    Gate["VerdictGate"]
-  end
-
-  subgraph Ext["Outside the app"]
-    GitHub
-    TF["Nebius Token Factory"]
-    Tav["Tavily API"]
-  end
-
-  Store["RunStore LRU plus fixtures"]
-
-  subgraph UI["Desk"]
-    Overlay["Overlay until map"]
-    Canvas["React Flow canvas"]
-    Stamp["Stamp and tickets"]
-  end
-
-  Intake --> POST
-  POST --> Fetch
-  Fetch --> GitHub
-  Fetch --> Snapshot
-  Snapshot --> Graph
-  Graph --> Pack
-  Pack --> Triage
-  Triage --> TF
-  Triage --> Tavily
-  Tavily --> Tav
-  Tavily --> Super
-  Super --> TF
-  Super --> Vision
-  Vision --> TF
-  Vision --> Ultra
-  Ultra --> TF
-  Ultra --> Gate
-  Gate --> Store
-  POST --> Desk
-  Desk --> SSE
-  Store --> SSE
-  SSE --> Overlay
-  Overlay --> Canvas
-  Canvas --> Stamp
-  Desk --> GET
-  GET --> Store
-```
-
-**Steps**
-
-```mermaid
-flowchart LR
-  Fetch --> Snapshot --> Graph --> Pack --> Triage --> Tavily --> Vision --> Gate
-```
-
-**Stamps**
-
-```mermaid
-flowchart LR
-  Gate --> SHIP["No cited exceptions"]
-  Gate --> FIX["Cited exceptions"]
-  Gate --> BLOCK["High-certainty exception"]
+    REVIEWER {
+        string role "reads the desk"
+    }
+    RUN {
+        string badge "Live Fixture or Replay"
+        string source "PR paste or fixture"
+    }
+    GITHUB_PR {
+        string url "public only"
+        string title
+        string diff
+    }
+    PASTE {
+        string issue
+        string diff
+        string screenshots "up to 3"
+    }
+    FIXTURE {
+        string desk "ship fix or block"
+    }
+    DESK {
+        string page "/r/id"
+    }
+    OVERLAY {
+        string wait "map not ready yet"
+    }
+    CANVAS {
+        string map "import neighborhood"
+        string action "zoom pan click file"
+    }
+    FILE {
+        string path
+        int added
+        int removed
+    }
+    STAMP {
+        string none "No cited exceptions"
+        string cited "Cited exceptions"
+        string secret "High-certainty exception"
+    }
+    FINDING {
+        string kind
+        string path
+        string line
+        string quote
+    }
+    NEMOTRON {
+        string triage Lightning
+        string draft Super
+        string vision SuperVL
+        string escalate Ultra
+    }
+    TOKEN_FACTORY {
+        string host "api.tokenfactory.nebius.com"
+    }
+    TAVILY {
+        string search "invented surfaces only"
+        string note "zero hits is not proof"
+    }
+    COVERAGE {
+        string snapshot
+        string parser
+        string tavily
+        string vision
+    }
+    ESTIMATE {
+        string tokens
+        string usd "display rates"
+    }
 ```
 
 ## Setup
