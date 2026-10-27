@@ -103,7 +103,3 @@ pnpm start
 ```
 
 Use the same env as `.env.example`.
-
-## License
-
-MIT. Copyright 2026 MergeDesk.
