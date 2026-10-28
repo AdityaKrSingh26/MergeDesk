@@ -11,7 +11,7 @@ Open the app, paste a PR URL or click a fixture, and read the desk.
 - **Intake.** Public GitHub PR URL, pasted issue and diff, or one-click fixtures.
 - **Overlay.** Full-screen Fetch through Gate until the map lands, then a brass bar on the desk. Review hydrates after the stamp.
 - **Canvas.** Zoom and pan the import neighborhood. Click a file to pin its findings and dim the rest.
-- **Walkthrough.** Change summary, user-flow graph, and file-flow layers after Gate. Drawn with React Flow, not mermaid.
+- **Walkthrough.** Numbered change notes, who-does-what routing slips, and files grouped by job. The neighborhood map stays React Flow. Mermaid stays in the Action comment.
 - **Review.** Read-only file comments and copyable suggested-diff tickets. The desk never applies patches.
 - **Reading order.** Start-here files, changed-file +/−, and a caption that this map is not an execution trace.
 - **Stamp.** Advisory labels only: **No cited exceptions**, **Cited exceptions**, **High-certainty exception**. Review comments do not move the stamp.

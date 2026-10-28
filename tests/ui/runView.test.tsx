@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { RunView } from "@/app/r/[id]/RunView";
 import { makeCoverage } from "../helpers/coverage";
@@ -924,7 +924,13 @@ describe("RunView", () => {
     }} />);
     expect(screen.getByRole("heading", { name: "Walkthrough" })).toBeInTheDocument();
     expect(screen.getByText("Host syncs the model before shared tour.")).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "User flow" })).toBeInTheDocument();
+    const userFlow = screen.getByRole("region", { name: "User flow" });
+    expect(within(userFlow).queryByRole("list", { name: "Roles" })).toBeNull();
+    expect(within(userFlow).getAllByText("Host").length).toBeGreaterThan(0);
+    expect(within(userFlow).getAllByText("Guest").length).toBeGreaterThan(0);
+    expect(within(userFlow).getByText("sync model")).toBeInTheDocument();
+    expect(within(userFlow).queryByRole("button", { name: "Fit flow" })).toBeNull();
+    expect(screen.getByRole("heading", { name: "Files by job" })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "src/auth.ts" }).length).toBeGreaterThan(0);
     expect(screen.getByText("AWS key in the patch")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Apply" })).not.toBeInTheDocument();
