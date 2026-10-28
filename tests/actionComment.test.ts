@@ -118,6 +118,28 @@ describe("advisoryComment", () => {
     expect(text).not.toContain(" · SHIP");
     expect(text).toContain("https://mergedesk.example/r/run-ship");
   });
+
+  it("includes walkthrough summary and mermaid flowchart", () => {
+    const run = shipRun();
+    run.walkthrough = {
+      summary: ["Adds clamp(n, min, max)."],
+      userFlow: {
+        nodes: [
+          { id: "caller", label: "Caller", kind: "actor" },
+          { id: "clamp", label: "clamp()", kind: "action" },
+        ],
+        edges: [{ from: "caller", to: "clamp", label: "n, min, max" }],
+      },
+      fileLayers: [],
+      comments: [],
+      suggestions: [],
+    };
+    const text = advisoryComment(run, "https://mergedesk.example");
+    expect(text).toContain("Adds clamp(n, min, max).");
+    expect(text).toContain("```mermaid");
+    expect(text).toContain("flowchart LR");
+    expect(text).toContain("n, min, max");
+  });
 });
 
 describe("advisoryCheck", () => {

@@ -23,6 +23,7 @@ export interface Coverage {
   hops: 1 | 2;
   tavily: "ok" | "failed" | "skipped";
   vision: "ok" | "skipped" | "failed";
+  review: "ok" | "failed" | "skipped";
   budgetCapped: boolean;
   timedOut: boolean;
   packTruncated: boolean;
@@ -80,7 +81,20 @@ export type ProgressStep =
   | "Triage"
   | "Tavily"
   | "Vision"
-  | "Gate";
+  | "Gate"
+  | "Review";
+
+export const DESK_STEPS: ProgressStep[] = [
+  "Fetch",
+  "Snapshot",
+  "Graph",
+  "Pack",
+  "Triage",
+  "Tavily",
+  "Vision",
+  "Gate",
+  "Review",
+];
 
 export interface NeighborhoodNode {
   id: string;
@@ -104,6 +118,57 @@ export interface ChangedFile {
   path: string;
   linesAdded: number;
   linesRemoved: number;
+}
+
+export type ReviewCommentSeverity = "issue" | "suggestion" | "nit";
+
+export interface ReviewComment {
+  id: string;
+  path: string;
+  startLine: number;
+  endLine?: number;
+  title: string;
+  body: string;
+  severity: ReviewCommentSeverity;
+  quote: string;
+}
+
+export interface SuggestedDiff {
+  id: string;
+  path: string;
+  title: string;
+  unifiedDiff: string;
+}
+
+export interface UserFlowNode {
+  id: string;
+  label: string;
+  kind: "actor" | "action";
+}
+
+export interface UserFlowEdge {
+  from: string;
+  to: string;
+  label?: string;
+}
+
+export interface UserFlow {
+  nodes: UserFlowNode[];
+  edges: UserFlowEdge[];
+}
+
+export interface FileLayer {
+  name: string;
+  paths: string[];
+  why: string;
+}
+
+export interface Walkthrough {
+  summary: string[];
+  userFlow: UserFlow;
+  fileLayers: FileLayer[];
+  comments: ReviewComment[];
+  suggestions: SuggestedDiff[];
 }
 
 export interface RunHeadline {
@@ -174,6 +239,7 @@ export interface Run {
   source: RunSource;
   coverage: Coverage;
   map?: OrientationMap;
+  walkthrough?: Walkthrough;
   verdict?: Verdict;
   ledger: TokenLine[];
   headline?: RunHeadline;

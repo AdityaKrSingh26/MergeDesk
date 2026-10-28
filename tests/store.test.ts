@@ -23,7 +23,7 @@ describe("store", () => {
         coverage: {
           source: "live", snapshot: "patch-only", parser: "none",
           graphFilesKept: 0, graphFileCap: 40, hops: 1,
-          tavily: "skipped", vision: "skipped",
+          tavily: "skipped", vision: "skipped", review: "skipped",
           budgetCapped: false, timedOut: false, packTruncated: false,
         },
         ledger: [],
@@ -45,7 +45,7 @@ describe("store", () => {
         coverage: {
           source: "live", snapshot: "patch-only", parser: "none",
           graphFilesKept: 0, graphFileCap: 40, hops: 1,
-          tavily: "skipped", vision: "skipped",
+          tavily: "skipped", vision: "skipped", review: "skipped",
           budgetCapped: false, timedOut: false, packTruncated: false,
         },
         ledger: [],

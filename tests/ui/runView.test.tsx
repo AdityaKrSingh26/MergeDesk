@@ -523,7 +523,7 @@ describe("RunView", () => {
         const status = screen.getByRole("status");
         expect(status).toHaveTextContent("Graph");
         expect(status).toHaveTextContent("local");
-        expect(status).toHaveTextContent("3 of 8");
+        expect(status).toHaveTextContent("3 of 9");
       });
       es?.emit("verdict", {
         stamp: "FIX",
@@ -559,7 +559,7 @@ describe("RunView", () => {
       render(<RunView run={{ ...blockRun, status: "queued", map: undefined, verdict: undefined }} />);
       const status = screen.getByRole("status");
       expect(status).toHaveTextContent("Fetch");
-      expect(status).toHaveTextContent("1 of 8");
+      expect(status).toHaveTextContent("1 of 9");
       expect(screen.queryByRole("region", { name: "PR import neighborhood" })).not.toBeInTheDocument();
     } finally {
       vi.unstubAllGlobals();
@@ -589,6 +589,7 @@ describe("RunView", () => {
     const steps = screen.getByRole("list", { name: "Desk steps" });
     expect(steps).toHaveTextContent("Fetch");
     expect(steps).toHaveTextContent("Gate");
+    expect(steps).toHaveTextContent("Review");
     expect(screen.getByRole("region", { name: "Stamp" })).toBeInTheDocument();
   });
 
@@ -887,5 +888,48 @@ describe("RunView", () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+
+  it("renders walkthrough summary, user flow, file layer, and a copyable suggested diff", async () => {
+    const writeText = vi.fn(async () => undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    render(<RunView run={{
+      ...blockRun,
+      walkthrough: {
+        summary: ["Host syncs the model before shared tour."],
+        userFlow: {
+          nodes: [
+            { id: "host", label: "Host", kind: "actor" },
+            { id: "guest", label: "Guest", kind: "actor" },
+          ],
+          edges: [{ from: "host", to: "guest", label: "sync model" }],
+        },
+        fileLayers: [{ name: "Logic", paths: ["src/auth.ts"], why: "key file" }],
+        comments: [{
+          id: "comment-0",
+          path: "src/auth.ts",
+          startLine: 11,
+          title: "AWS key in the patch",
+          body: "Remove the hardcoded key.",
+          severity: "issue",
+          quote: "AKIAIOSFODNN7EXAMPLE",
+        }],
+        suggestions: [{
+          id: "suggest-0",
+          path: "src/auth.ts",
+          title: "Remove the hardcoded key",
+          unifiedDiff: "--- a/src/auth.ts\n+++ b/src/auth.ts\n@@ -11,1 +11,0 @@\n-export const awsKey = \"AKIAIOSFODNN7EXAMPLE\";\n",
+        }],
+      },
+    }} />);
+    expect(screen.getByRole("heading", { name: "Walkthrough" })).toBeInTheDocument();
+    expect(screen.getByText("Host syncs the model before shared tour.")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "User flow" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "src/auth.ts" }).length).toBeGreaterThan(0);
+    expect(screen.getByText("AWS key in the patch")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Apply" })).not.toBeInTheDocument();
+    expect(document.querySelector("pre.mermaid")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Copy" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalled());
   });
 });

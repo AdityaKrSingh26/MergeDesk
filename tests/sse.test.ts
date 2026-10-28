@@ -86,7 +86,10 @@ describe("sse", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("text/event-stream");
     const events = parseSse(await res.text());
-    expect(events.map((e) => e.event)).toEqual(["map", "coverage", "verdict", "done"]);
+    const names = events.map((e) => e.event);
+    expect(names).toContain("map");
+    expect(names).toContain("verdict");
+    expect(names.at(-1)).toBe("done");
     const map = JSON.parse(events[0].data) as { mermaid?: string };
     expect(map.mermaid).toMatch(/graph/i);
     const coverage = JSON.parse(events[1].data) as Coverage;
@@ -149,7 +152,8 @@ describe("sse", () => {
     release();
     const events = parseSse(await res.text());
     const names = events.map((e) => e.event);
-    expect(names.slice(-2)).toEqual(["verdict", "done"]);
+    expect(names).toContain("verdict");
+    expect(names.at(-1)).toBe("done");
     const coverages = events
       .filter((e) => e.event === "coverage")
       .map((e) => JSON.parse(e.data) as Coverage);

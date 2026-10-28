@@ -11,6 +11,7 @@
     "hops": 1,
     "tavily": "ok",
     "vision": "skipped",
+    "review": "skipped",
     "budgetCapped": false,
     "timedOut": false,
     "packTruncated": true
@@ -126,6 +127,7 @@
       "hops": 1,
       "tavily": "ok",
       "vision": "skipped",
+      "review": "skipped",
       "budgetCapped": false,
       "timedOut": false,
       "packTruncated": true
@@ -134,5 +136,67 @@
     "usdEstimateTotal": 0
   },
   "ledger": [],
-  "createdAt": 0
+  "createdAt": 0,
+  "walkthrough": {
+    "summary": [
+      "CSV export writes invoice rows.",
+      "Patch adds an AWS access key in src/auth.ts."
+    ],
+    "userFlow": {
+      "nodes": [
+        {
+          "id": "operator",
+          "label": "Operator",
+          "kind": "actor"
+        },
+        {
+          "id": "export",
+          "label": "exportInvoicesCsv",
+          "kind": "action"
+        }
+      ],
+      "edges": [
+        {
+          "from": "operator",
+          "to": "export",
+          "label": "export"
+        }
+      ]
+    },
+    "fileLayers": [
+      {
+        "name": "Secret",
+        "paths": [
+          "src/auth.ts"
+        ],
+        "why": "credential in the diff"
+      },
+      {
+        "name": "Export",
+        "paths": [
+          "src/invoices.ts"
+        ],
+        "why": "CSV path named in the issue"
+      }
+    ],
+    "comments": [
+      {
+        "id": "comment-0",
+        "path": "src/auth.ts",
+        "startLine": 11,
+        "title": "AWS key in the patch",
+        "body": "This line matches the high-certainty secret regex.",
+        "severity": "issue",
+        "quote": "AKIAIOSFODNN7EXAMPLE"
+      }
+    ],
+    "suggestions": [
+      {
+        "id": "suggest-0",
+        "path": "src/auth.ts",
+        "title": "Remove the hardcoded key",
+        "unifiedDiff": "--- a/src/auth.ts\n+++ b/src/auth.ts\n@@ -11,1 +11,0 @@\n-export const awsKey = \"AKIAIOSFODNN7EXAMPLE\";\n"
+      }
+    ]
+  }
 }

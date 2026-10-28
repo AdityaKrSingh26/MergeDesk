@@ -10,6 +10,7 @@ export function makeCoverage(partial: Partial<Coverage> = {}): Coverage {
     hops: 1,
     tavily: "skipped",
     vision: "skipped",
+    review: "skipped",
     budgetCapped: false,
     timedOut: false,
     packTruncated: false,

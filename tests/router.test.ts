@@ -4,6 +4,8 @@ import {
   createTokenFactoryClient,
   MODELS,
   parseModelJson,
+  parseReviewJson,
+  runReview,
   runSuper,
   runSuperVl,
   runTriage,
@@ -35,6 +37,14 @@ const VALID_SUPER = JSON.stringify({
   proposedStamp: "SHIP",
 });
 
+const VALID_REVIEW = JSON.stringify({
+  summary: ["Adds clamp."],
+  userFlow: { nodes: [{ id: "a", label: "Caller", kind: "actor" }], edges: [] },
+  fileLayers: [{ name: "Logic", paths: ["src/clamp.ts"], why: "helper" }],
+  comments: [],
+  suggestions: [],
+});
+
 function fakeUsage() {
   return { prompt_tokens: 10, completion_tokens: 2, prompt_tokens_details: { cached_tokens: 0 } };
 }
@@ -51,6 +61,30 @@ describe("router", () => {
     const result = await runSuper({ pack: emptyPack(), client: client as never });
     expect(n).toBe(2);
     expect(result.ok).toBe(false);
+  });
+
+  it("parseReviewJson accepts walkthrough JSON and rejects exception Super JSON", () => {
+    expect(parseReviewJson(VALID_REVIEW).ok).toBe(true);
+    expect(parseReviewJson(VALID_SUPER).ok).toBe(false);
+  });
+
+  it("retries Review once on invalid JSON then returns ok:false", async () => {
+    let n = 0;
+    const client = {
+      chat: {
+        completions: {
+          create: async () => {
+            n += 1;
+            return { choices: [{ message: { content: "not-json" } }], usage: fakeUsage() };
+          },
+        },
+      },
+    };
+    const result = await runReview({ pack: emptyPack(), stampLabel: "No cited exceptions", client: client as never });
+    expect(n).toBe(2);
+    expect(result.ok).toBe(false);
+    expect(result.ledger).toHaveLength(2);
+    expect(result.ledger.every((line) => line.model === MODELS.super)).toBe(true);
   });
 
   it("parseModelJson accepts proposedStamp but gate will ignore it", () => {

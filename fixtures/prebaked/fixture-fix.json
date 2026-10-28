@@ -11,6 +11,7 @@
     "hops": 1,
     "tavily": "skipped",
     "vision": "skipped",
+    "review": "skipped",
     "budgetCapped": false,
     "timedOut": false,
     "packTruncated": false
@@ -97,6 +98,7 @@
       "hops": 1,
       "tavily": "skipped",
       "vision": "skipped",
+      "review": "skipped",
       "budgetCapped": false,
       "timedOut": false,
       "packTruncated": false
@@ -105,5 +107,70 @@
     "usdEstimateTotal": 0
   },
   "ledger": [],
-  "createdAt": 0
+  "createdAt": 0,
+  "walkthrough": {
+    "summary": [
+      "Adds fetchWithRetry around fetchJson in src/http.ts.",
+      "Default timeout is 0ms while the issue asked for 2000ms."
+    ],
+    "userFlow": {
+      "nodes": [
+        {
+          "id": "app",
+          "label": "App",
+          "kind": "actor"
+        },
+        {
+          "id": "retry",
+          "label": "fetchWithRetry",
+          "kind": "action"
+        },
+        {
+          "id": "net",
+          "label": "network",
+          "kind": "action"
+        }
+      ],
+      "edges": [
+        {
+          "from": "app",
+          "to": "retry",
+          "label": "GET"
+        },
+        {
+          "from": "retry",
+          "to": "net",
+          "label": "attempt"
+        }
+      ]
+    },
+    "fileLayers": [
+      {
+        "name": "Logic",
+        "paths": [
+          "src/http.ts"
+        ],
+        "why": "retry helper"
+      }
+    ],
+    "comments": [
+      {
+        "id": "comment-0",
+        "path": "src/http.ts",
+        "startLine": 3,
+        "title": "Timeout is 0ms",
+        "body": "Issue asked for a 2000ms default timeout.",
+        "severity": "issue",
+        "quote": "export const DEFAULT_TIMEOUT_MS = 0;"
+      }
+    ],
+    "suggestions": [
+      {
+        "id": "suggest-0",
+        "path": "src/http.ts",
+        "title": "Set DEFAULT_TIMEOUT_MS to 2000",
+        "unifiedDiff": "--- a/src/http.ts\n+++ b/src/http.ts\n@@ -1,3 +1,3 @@\n-export const DEFAULT_TIMEOUT_MS = 0;\n+export const DEFAULT_TIMEOUT_MS = 2000;\n"
+      }
+    ]
+  }
 }

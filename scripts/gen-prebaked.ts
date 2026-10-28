@@ -10,6 +10,7 @@ import type {
   OrientationMap,
   Run,
   VerdictStamp,
+  Walkthrough,
 } from "../src/server/shared";
 
 const OUT_DIR = join(process.cwd(), "fixtures", "prebaked");
@@ -162,6 +163,114 @@ function authoredFindings(id: FixtureId): Finding[] {
   ];
 }
 
+function authoredWalkthrough(id: FixtureId): Walkthrough {
+  if (id === "fixture-ship") {
+    return {
+      summary: [
+        "Adds clamp(n, min, max) in src/clamp.ts.",
+        "Reuses abs() from src/math.ts.",
+        "Adds unit tests in src/clamp.test.ts.",
+      ],
+      userFlow: {
+        nodes: [
+          { id: "caller", label: "Caller", kind: "actor" },
+          { id: "clamp", label: "clamp()", kind: "action" },
+          { id: "abs", label: "abs()", kind: "action" },
+        ],
+        edges: [
+          { from: "caller", to: "clamp", label: "n, min, max" },
+          { from: "clamp", to: "abs", label: "magnitude" },
+        ],
+      },
+      fileLayers: [
+        { name: "Logic", paths: ["src/clamp.ts"], why: "new helper named in the issue" },
+        { name: "Neighbor", paths: ["src/math.ts"], why: "abs used by clamp" },
+        { name: "Tests", paths: ["src/clamp.test.ts"], why: "covers clamp" },
+      ],
+      comments: [],
+      suggestions: [],
+    };
+  }
+  if (id === "fixture-fix") {
+    return {
+      summary: [
+        "Adds fetchWithRetry around fetchJson in src/http.ts.",
+        "Default timeout is 0ms while the issue asked for 2000ms.",
+      ],
+      userFlow: {
+        nodes: [
+          { id: "app", label: "App", kind: "actor" },
+          { id: "retry", label: "fetchWithRetry", kind: "action" },
+          { id: "net", label: "network", kind: "action" },
+        ],
+        edges: [
+          { from: "app", to: "retry", label: "GET" },
+          { from: "retry", to: "net", label: "attempt" },
+        ],
+      },
+      fileLayers: [{ name: "Logic", paths: ["src/http.ts"], why: "retry helper" }],
+      comments: [
+        {
+          id: "comment-0",
+          path: "src/http.ts",
+          startLine: 3,
+          title: "Timeout is 0ms",
+          body: "Issue asked for a 2000ms default timeout.",
+          severity: "issue",
+          quote: "export const DEFAULT_TIMEOUT_MS = 0;",
+        },
+      ],
+      suggestions: [
+        {
+          id: "suggest-0",
+          path: "src/http.ts",
+          title: "Set DEFAULT_TIMEOUT_MS to 2000",
+          unifiedDiff:
+            "--- a/src/http.ts\n+++ b/src/http.ts\n@@ -1,3 +1,3 @@\n-export const DEFAULT_TIMEOUT_MS = 0;\n+export const DEFAULT_TIMEOUT_MS = 2000;\n",
+        },
+      ],
+    };
+  }
+  return {
+    summary: [
+      "CSV export writes invoice rows.",
+      "Patch adds an AWS access key in src/auth.ts.",
+      "Shared paint and model sync are out of this fixture.",
+    ],
+    userFlow: {
+      nodes: [
+        { id: "operator", label: "Operator", kind: "actor" },
+        { id: "export", label: "exportInvoicesCsv", kind: "action" },
+      ],
+      edges: [{ from: "operator", to: "export", label: "export" }],
+    },
+    fileLayers: [
+      { name: "Secret", paths: ["src/auth.ts"], why: "credential in the diff" },
+      { name: "Export", paths: ["src/invoices.ts"], why: "CSV path named in the issue" },
+    ],
+    comments: [
+      {
+        id: "comment-0",
+        path: "src/auth.ts",
+        startLine: 11,
+        title: "AWS key in the patch",
+        body: "This line matches the high-certainty secret regex.",
+        severity: "issue",
+        quote: "AKIAIOSFODNN7EXAMPLE",
+      },
+    ],
+    suggestions: [
+      {
+        id: "suggest-0",
+        path: "src/auth.ts",
+        title: "Remove the hardcoded key",
+        unifiedDiff:
+          "--- a/src/auth.ts\n+++ b/src/auth.ts\n@@ -11,1 +11,0 @@\n-export const awsKey = \"AKIAIOSFODNN7EXAMPLE\";\n",
+      },
+    ],
+  };
+}
+
 function stampFor(id: FixtureId): VerdictStamp {
   if (id === "fixture-ship") return "SHIP";
   if (id === "fixture-fix") return "FIX";
@@ -186,8 +295,9 @@ async function buildRun(id: FixtureId): Promise<Run> {
     graphFilesKept: graph.filesKept.length,
     graphFileCap: 40,
     hops: graph.hops,
-    tavily: "skipped",
+    tavily: id === "fixture-block" ? "ok" : "skipped",
     vision: "skipped",
+    review: "skipped",
     budgetCapped: false,
     timedOut: false,
     packTruncated: id === "fixture-block",
@@ -221,6 +331,7 @@ async function buildRun(id: FixtureId): Promise<Run> {
     source: "replay",
     coverage,
     map,
+    walkthrough: authoredWalkthrough(id),
     verdict: {
       stamp,
       displayStamp: displayStamp(stamp),

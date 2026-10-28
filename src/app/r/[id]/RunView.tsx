@@ -2,23 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { SourceBadge } from "@/components/SourceBadge";
-import { evidencePinsNode, resolveNeighborhood } from "@/server/shared";
-import type { ProgressStep, Run } from "@/server/shared";
+import { DESK_STEPS, evidencePinsNode, resolveNeighborhood } from "@/server/shared";
+import type { ProgressStep, Run, Walkthrough } from "@/server/shared";
 import { CoverageChips } from "./CoverageChips";
 import { MapPanel } from "./MapPanel";
+import { ReviewPanel } from "./ReviewPanel";
 import { OVERLAY_MIN_MS, RunOverlay } from "./RunOverlay";
 import { Stamp } from "./Stamp";
+import { WalkthroughPanel } from "./WalkthroughPanel";
 
-const STEPS: ProgressStep[] = [
-  "Fetch",
-  "Snapshot",
-  "Graph",
-  "Pack",
-  "Triage",
-  "Tavily",
-  "Vision",
-  "Gate",
-];
+const STEPS: ProgressStep[] = DESK_STEPS;
 
 function stepState(
   status: Run["status"],
@@ -114,6 +107,12 @@ export function RunView({ run }: { run: Run }) {
         coverage: verdict.coverage ?? prev.coverage,
       }));
     });
+    on("walkthrough", (data) => {
+      setLive((prev) => ({
+        ...prev,
+        walkthrough: data as Walkthrough,
+      }));
+    });
     on("done", (data) => {
       const rec = data as { modelParseFailed?: boolean };
       setLive((prev) => ({
@@ -182,7 +181,7 @@ export function RunView({ run }: { run: Run }) {
         step={step}
         detail={details[step] ?? ""}
         index={STEPS.indexOf(step) + 1}
-        total={8}
+        total={STEPS.length}
         error={live.error?.message}
       />
     );
@@ -248,7 +247,7 @@ export function RunView({ run }: { run: Run }) {
       </ol>
       {live.status === "running" ? (
         <div aria-hidden="true" className="h-[3px] bg-[var(--desk-rule)]">
-          <div className="h-[3px] bg-[var(--desk-brass)]" style={{ width: `${(stepIndex / 8) * 100}%` }} />
+          <div className="h-[3px] bg-[var(--desk-brass)]" style={{ width: `${(stepIndex / STEPS.length) * 100}%` }} />
         </div>
       ) : null}
       {live.error && live.map ? (
@@ -257,13 +256,17 @@ export function RunView({ run }: { run: Run }) {
         </p>
       ) : null}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(280px,0.9fr)]">
-        <MapPanel
-          run={live}
-          selectedPath={selectedPath}
-          onSelectPath={setSelectedPath}
-          findingPaths={findingPaths}
-          startHerePaths={startHerePaths}
-        />
+        <div className="flex flex-col gap-6">
+          <MapPanel
+            run={live}
+            selectedPath={selectedPath}
+            onSelectPath={setSelectedPath}
+            findingPaths={findingPaths}
+            startHerePaths={startHerePaths}
+          />
+          <WalkthroughPanel run={live} onSelectPath={setSelectedPath} />
+          <ReviewPanel run={live} onSelectPath={setSelectedPath} />
+        </div>
         <div className="flex flex-col gap-6">
           <CoverageChips coverage={live.coverage} modelParseFailed={live.modelParseFailed} />
           <Stamp run={live} selectedPath={selectedPath} />

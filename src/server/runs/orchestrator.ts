@@ -13,7 +13,7 @@ import {
 } from "@/server/ingest";
 import { GRAPH_CAPTION, PACK_TRUNCATED_NOTE, tavilyHitsLabel } from "@/server/shared";
 import { nanoid } from "./ids";
-import { gate, type GateInput } from "@/server/verdict";
+import { allowedReviewPaths, gate, gateWalkthrough, type GateInput } from "@/server/verdict";
 import {
   buildGraph,
   changedFilesFromDiff,
@@ -28,12 +28,14 @@ import {
   loadLiveModels,
   MODELS,
   packContext,
+  runReview,
   runSuper,
   runSuperVl,
   runTriage,
   runUltra,
   searchClaims,
   shouldCallUltra,
+  superWorstCaseUsd,
   type ChatClient,
   type TavilyClaim,
   type WebEvidence,
@@ -53,6 +55,8 @@ import type {
   RunRequest,
   RunSource,
   TokenLine,
+  Walkthrough,
+  ContextPack,
 } from "@/server/shared";
 
 export interface RunDeps {
@@ -111,6 +115,7 @@ function baseCoverage(source: RunSource): Coverage {
     hops: 1,
     tavily: "skipped",
     vision: "skipped",
+    review: "skipped",
     budgetCapped: false,
     timedOut: false,
     packTruncated: false,
@@ -125,6 +130,7 @@ function patchRun(id: string, patch: Partial<Run>): Run {
     source: patch.source ?? current?.source ?? "replay",
     coverage: patch.coverage ?? current?.coverage ?? baseCoverage("replay"),
     map: patch.map ?? current?.map,
+    walkthrough: patch.walkthrough ?? current?.walkthrough,
     verdict: patch.verdict ?? current?.verdict,
     ledger: patch.ledger ?? current?.ledger ?? [],
     headline: patch.headline ?? current?.headline,
@@ -194,11 +200,76 @@ function emitTerminal(
   coverage: Coverage,
   verdict: NonNullable<Run["verdict"]>,
   modelParseFailed = false,
+  walkthrough?: Walkthrough,
 ): void {
   emit(id, "map", map);
   emit(id, "coverage", coverage);
   emit(id, "verdict", verdict);
+  if (walkthrough) emit(id, "walkthrough", walkthrough);
   emit(id, "done", { modelParseFailed });
+}
+
+async function completeReview(args: {
+  id: string;
+  map: OrientationMap;
+  coverage: Coverage;
+  verdict: NonNullable<Run["verdict"]>;
+  pack?: ContextPack;
+  chat?: ChatClient;
+  prebaked?: Walkthrough;
+}): Promise<{ coverage: Coverage; walkthrough?: Walkthrough; verdict: NonNullable<Run["verdict"]> }> {
+  const coverage = args.coverage;
+  const verdict = args.verdict;
+  if (args.prebaked) {
+    emitStep(args.id, "Review", "skipped");
+    coverage.review = "skipped";
+    return { coverage, walkthrough: args.prebaked, verdict };
+  }
+  if (coverage.timedOut) {
+    emitStep(args.id, "Review", "skipped");
+    coverage.review = "skipped";
+    return { coverage, verdict };
+  }
+  if (!args.chat || !args.pack) {
+    emitStep(args.id, "Review", "skipped");
+    coverage.review = "skipped";
+    return { coverage, verdict };
+  }
+  const cap = Number(process.env.MERGEDESK_SPEND_CAP_USD ?? 0.12);
+  if (verdict.usdEstimateTotal + superWorstCaseUsd() > cap) {
+    emitStep(args.id, "Review", "skipped");
+    coverage.review = "skipped";
+    const line: TokenLine = {
+      model: MODELS.super,
+      promptTokens: 0,
+      completionTokens: 0,
+      cachedTokens: 0,
+      usdEstimate: 0,
+      skipped: true,
+      reason: "budget_capped",
+    };
+    verdict.ledger = [...verdict.ledger, line];
+    return { coverage, verdict };
+  }
+  emitStep(args.id, "Review", MODELS.super);
+  const result = await runReview({
+    pack: args.pack,
+    stampLabel: verdict.displayStamp,
+    client: args.chat,
+  });
+  verdict.ledger = [...verdict.ledger, ...result.ledger];
+  verdict.usdEstimateTotal = verdict.ledger.reduce((sum, line) => sum + line.usdEstimate, 0);
+  if (!result.ok) {
+    coverage.review = "failed";
+    return { coverage, verdict };
+  }
+  const gated = gateWalkthrough(result.value, allowedReviewPaths(args.map));
+  if (!gated.ok) {
+    coverage.review = "failed";
+    return { coverage, verdict };
+  }
+  coverage.review = "ok";
+  return { coverage, walkthrough: gated.value, verdict };
 }
 
 function collectFiles(repoRoot: string): Record<string, string> {
@@ -552,12 +623,16 @@ function finishReplay(args: {
     ledger: prebaked.ledger ?? [],
     residualNotes: prebaked.verdict?.residualNotes,
   });
-  emitTerminal(args.id, map, coverage, verdict);
+  emitStep(args.id, "Review", "skipped");
+  coverage.review = "skipped";
+  const walkthrough = prebaked.walkthrough;
+  emitTerminal(args.id, map, coverage, verdict, false, walkthrough);
   patchRun(args.id, {
     status: "done",
     source: "replay",
     coverage,
     map,
+    walkthrough,
     verdict,
     ledger: verdict.ledger,
   });
@@ -653,6 +728,8 @@ async function continueFromFiles(args: ContinueArgs): Promise<void> {
     emitStep(id, "Vision", "skipped");
     emitStep(id, "Gate", "local");
     const verdict = gate({ rawFindings: secrets, coverage, ledger: [] });
+    emitStep(id, "Review", "skipped");
+    coverage.review = "skipped";
     emitTerminal(id, map0, coverage, verdict);
     patchRun(id, { status: "done", source, coverage, map: map0, verdict, ledger: verdict.ledger });
     return;
@@ -818,16 +895,27 @@ async function continueFromFiles(args: ContinueArgs): Promise<void> {
     emitStep(id, "Gate", "local");
     const notes = [...(residualNotes ?? [])];
     if (coverage.packTruncated && !notes.includes(PACK_TRUNCATED_NOTE)) notes.push(PACK_TRUNCATED_NOTE);
-    const verdict = gate({ rawFindings, coverage, ledger, residualNotes: notes });
-    if (verdict.ledger.some((line) => !line.skipped)) recordLiveSpend(verdict.usdEstimateTotal);
-    emitTerminal(id, map, coverage, verdict, modelParseFailed);
+    const verdict0 = gate({ rawFindings, coverage, ledger, residualNotes: notes });
+    const reviewed = await completeReview({
+      id,
+      map,
+      coverage,
+      verdict: verdict0,
+      pack,
+      chat,
+    });
+    if (reviewed.verdict.ledger.some((line) => !line.skipped)) {
+      recordLiveSpend(reviewed.verdict.usdEstimateTotal);
+    }
+    emitTerminal(id, map, reviewed.coverage, reviewed.verdict, modelParseFailed, reviewed.walkthrough);
     patchRun(id, {
       status: "done",
       source,
-      coverage,
+      coverage: reviewed.coverage,
       map,
-      verdict,
-      ledger: verdict.ledger,
+      walkthrough: reviewed.walkthrough,
+      verdict: reviewed.verdict,
+      ledger: reviewed.verdict.ledger,
       modelParseFailed,
     });
   } catch (err) {

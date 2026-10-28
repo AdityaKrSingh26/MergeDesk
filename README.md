@@ -9,10 +9,12 @@ Open the app, paste a PR URL or click a fixture, and read the desk.
 ## Features
 
 - **Intake.** Public GitHub PR URL, pasted issue and diff, or one-click fixtures.
-- **Overlay.** Full-screen Fetch through Gate until the map lands, then a brass bar on the desk.
+- **Overlay.** Full-screen Fetch through Gate until the map lands, then a brass bar on the desk. Review hydrates after the stamp.
 - **Canvas.** Zoom and pan the import neighborhood. Click a file to pin its findings and dim the rest.
+- **Walkthrough.** Change summary, user-flow graph, and file-flow layers after Gate. Drawn with React Flow, not mermaid.
+- **Review.** Read-only file comments and copyable suggested-diff tickets. The desk never applies patches.
 - **Reading order.** Start-here files, changed-file +/−, and a caption that this map is not an execution trace.
-- **Stamp.** Advisory labels only: **No cited exceptions**, **Cited exceptions**, **High-certainty exception**.
+- **Stamp.** Advisory labels only: **No cited exceptions**, **Cited exceptions**, **High-certainty exception**. Review comments do not move the stamp.
 - **Tickets.** Kind, path, line, and quote. Coverage chips show what this run actually saw.
 - **Grounding.** Tavily search for invented surfaces. Zero hits is not proof of absence.
 - **Routing.** Local graph, small pack. Tree-sitter for JS, TS, and Python. Regex neighborhood for Go, Rust, C, Java, and similar. Nemotron on Token Factory: Lightning, Super, Super VL, Ultra.
@@ -48,6 +50,7 @@ flowchart TB
     Vision["Super VL"]
     Ultra["Ultra optional"]
     Gate["VerdictGate"]
+    Review["Review Super"]
   end
 
   subgraph Ext["Outside the app"]
@@ -61,6 +64,7 @@ flowchart TB
   subgraph UI["Desk"]
     Overlay["Overlay until map"]
     Canvas["React Flow canvas"]
+    Walk["Walkthrough and review"]
     Stamp["Stamp and tickets"]
   end
 
@@ -81,13 +85,16 @@ flowchart TB
   Vision --> Ultra
   Ultra --> TF
   Ultra --> Gate
-  Gate --> Store
+  Gate --> Review
+  Review --> TF
+  Review --> Store
   POST --> Desk
   Desk --> SSE
   Store --> SSE
   SSE --> Overlay
   Overlay --> Canvas
-  Canvas --> Stamp
+  Canvas --> Walk
+  Walk --> Stamp
   Desk --> GET
   GET --> Store
 ```
@@ -96,7 +103,7 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-  Fetch --> Snapshot --> Graph --> Pack --> Triage --> Tavily --> Vision --> Gate
+  Fetch --> Snapshot --> Graph --> Pack --> Triage --> Tavily --> Vision --> Gate --> Review
 ```
 
 **Stamps**
@@ -150,6 +157,7 @@ The in-app ledger is an estimate. Token Factory billing is the invoice.
 |---|---|---|
 | Triage | `nvidia/Nemotron-3_5-Lightning` | Always, unless the run timed out |
 | Map and draft findings | `nvidia/nemotron-3-super-120b-a12b` | Always, unless the run timed out |
+| Walkthrough | `nvidia/nemotron-3-super-120b-a12b` | After Gate. Invalid JSON leaves the stamp unchanged |
 | Vision | `nvidia/Nemotron-3.5-Super-VL` | 1 to 3 screenshots |
 | Escalate | `nvidia/Nemotron-3-Ultra-550b-a55b` | Super confidence under 0.55, or Super proposed a high-certainty exception. Skipped on spend or time cap |
 | Fallback triage | `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` | Lightning unavailable |

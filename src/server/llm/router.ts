@@ -1,6 +1,6 @@
 import { IMAGE_NOT_HEAD } from "@/server/shared";
 import { approxTokens } from "./pack";
-import { SYSTEM_PROMPT, wrapUntrusted } from "./promptGuard";
+import { REVIEW_SYSTEM_PROMPT, SYSTEM_PROMPT, wrapUntrusted } from "./promptGuard";
 import { MODELS, resolveModelId } from "./models";
 import { ultraWorstCaseUsd, usdEstimate } from "./pricing";
 import type { ContextPack, Finding, TokenLine } from "@/server/shared";
@@ -14,6 +14,9 @@ const CLIP_ORDER = ["tavily", "neighbors", "repoMap", "patch", "issue"] as const
 
 const SUPER_JSON_HINT =
   'Respond with a JSON object: {"startHere":[{"path":"","symbol":"","why":""}],"concerns":[{"name":"","paths":[]}],"functions":[{"name":"","path":"","job":""}],"mermaid":"graph TD; ...","findings":[],"residualNotes":[],"proposedStamp":"SHIP"}';
+
+export const REVIEW_JSON_HINT =
+  'Walkthrough JSON only: {"summary":[""],"userFlow":{"nodes":[{"id":"","label":"","kind":"actor"}],"edges":[{"from":"","to":"","label":""}]},"fileLayers":[{"name":"","paths":[],"why":""}],"comments":[{"path":"","startLine":1,"title":"","body":"","severity":"issue","quote":""}],"suggestions":[{"path":"","title":"","unifiedDiff":""}]}';
 
 const TRIAGE_JSON_HINT =
   'Respond with JSON {"claims":[{"type":"package","query":"","packageName":""}]}. type is package, api, or cve.';
@@ -75,6 +78,12 @@ export interface ChatClient {
 }
 
 export type ParseModelJsonResult = { ok: true; value: SuperJson } | { ok: false };
+
+export type ParseReviewJsonResult = { ok: true; value: Record<string, unknown> } | { ok: false };
+
+export type ReviewResult =
+  | { ok: true; value: Record<string, unknown>; ledger: TokenLine[] }
+  | { ok: false; ledger: TokenLine[] };
 
 export type SuperResult =
   | { ok: true; value: SuperJson; ledger: TokenLine[] }
@@ -154,6 +163,22 @@ export function parseModelJson(text: string): ParseModelJsonResult {
   }
 }
 
+export function parseReviewJson(text: string): ParseReviewJsonResult {
+  try {
+    const parsed: unknown = JSON.parse(text);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return { ok: false };
+    const rec = parsed as Record<string, unknown>;
+    if (!Array.isArray(rec.summary)) return { ok: false };
+    if (!rec.userFlow || typeof rec.userFlow !== "object" || Array.isArray(rec.userFlow)) return { ok: false };
+    if (!Array.isArray(rec.fileLayers)) return { ok: false };
+    if (!Array.isArray(rec.comments)) return { ok: false };
+    if (!Array.isArray(rec.suggestions)) return { ok: false };
+    return { ok: true, value: rec };
+  } catch {
+    return { ok: false };
+  }
+}
+
 function parseClaims(text: string): { ok: true; claims: Claim[] } | { ok: false } {
   try {
     const parsed: unknown = JSON.parse(text);
@@ -190,15 +215,19 @@ function userContent(pack: ContextPack, hint: string): string {
   return parts.join("\n\n");
 }
 
-function buildMessages(pack: ContextPack, hint: string): Array<{ role: "system" | "user"; content: string }> {
+function buildMessages(
+  pack: ContextPack,
+  hint: string,
+  system = SYSTEM_PROMPT,
+): Array<{ role: "system" | "user"; content: string }> {
   return [
-    { role: "system", content: SYSTEM_PROMPT },
+    { role: "system", content: system },
     { role: "user", content: userContent(pack, hint) },
   ];
 }
 
-function measurePrompt(pack: ContextPack, hint: string): number {
-  return approxTokens(buildMessages(pack, hint).map((m) => m.content).join(""));
+function measurePrompt(pack: ContextPack, hint: string, system = SYSTEM_PROMPT): number {
+  return approxTokens(buildMessages(pack, hint, system).map((m) => m.content).join(""));
 }
 
 function clonePack(pack: ContextPack): ContextPack {
@@ -223,10 +252,10 @@ function recount(pack: ContextPack): void {
   };
 }
 
-function clipPack(pack: ContextPack, maxTokens: number, hint: string): ContextPack {
+function clipPack(pack: ContextPack, maxTokens: number, hint: string, system = SYSTEM_PROMPT): ContextPack {
   const out = clonePack(pack);
   for (let i = 0; i < 16; i++) {
-    const used = measurePrompt(out, hint);
+    const used = measurePrompt(out, hint, system);
     if (used <= maxTokens) break;
     const key = CLIP_ORDER.find((k) => out[k].length > 0);
     if (!key) break;
@@ -274,6 +303,38 @@ export async function runSuper(args: { pack: ContextPack; client: ChatClient }):
     });
     ledger.push(tokenLine(MODELS.super, resp.usage));
     const parsed = parseModelJson(contentOf(resp));
+    if (parsed.ok) return { ok: true, value: parsed.value, ledger };
+  }
+  return { ok: false, ledger };
+}
+
+export async function runReview(args: {
+  pack: ContextPack;
+  stampLabel: string;
+  client: ChatClient;
+}): Promise<ReviewResult> {
+  const hint = `${REVIEW_JSON_HINT}\nAdvisory stamp (do not change): ${args.stampLabel}`;
+  const clipped = clipPack(args.pack, SUPER_MAX_PROMPT, hint, REVIEW_SYSTEM_PROMPT);
+  const messages = buildMessages(clipped, hint, REVIEW_SYSTEM_PROMPT);
+  const ledger: TokenLine[] = [];
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const retry = attempt > 0;
+    const extra_body: ExtraBody = retry
+      ? { chat_template_kwargs: { enable_thinking: false } }
+      : {
+          reasoning_budget: 1024,
+          chat_template_kwargs: { enable_thinking: true },
+        };
+    const resp = await args.client.chat.completions.create({
+      model: MODELS.super,
+      messages,
+      response_format: { type: "json_object" },
+      extra_body,
+      ...extra_body,
+      ...(retry ? { max_tokens: SUPER_RETRY_MAX_TOKENS } : {}),
+    });
+    ledger.push(tokenLine(MODELS.super, resp.usage));
+    const parsed = parseReviewJson(contentOf(resp));
     if (parsed.ok) return { ok: true, value: parsed.value, ledger };
   }
   return { ok: false, ledger };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HACKATHON_DISPLAY_RATES, MODELS, ultraWorstCaseUsd, usdEstimate } from "@/server/llm";
+import { HACKATHON_DISPLAY_RATES, MODELS, superWorstCaseUsd, ultraWorstCaseUsd, usdEstimate } from "@/server/llm";
 
 describe("usdEstimate", () => {
   it("prices 1M Lightning input tokens at $0.06", () => {
@@ -16,5 +16,8 @@ describe("usdEstimate", () => {
   });
   it("ultraWorstCaseUsd is finite and greater than zero", () => {
     expect(ultraWorstCaseUsd()).toBeGreaterThan(0);
+  });
+  it("superWorstCaseUsd is finite and greater than zero", () => {
+    expect(superWorstCaseUsd()).toBeGreaterThan(0);
   });
 });

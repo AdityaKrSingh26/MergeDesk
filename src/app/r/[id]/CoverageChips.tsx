@@ -14,6 +14,7 @@ export function CoverageChips({
     `hops: ${coverage.hops}`,
     `tavily: ${coverage.tavily}`,
     `vision: ${coverage.vision}`,
+    `review: ${coverage.review ?? "skipped"}`,
   ];
   if (coverage.budgetCapped) chips.push("budget_capped");
   if (coverage.timedOut) chips.push("timed_out");

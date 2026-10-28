@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildGraph, mermaidFromGraph, personalize } from "@/server/graph";
+import { buildGraph, mermaidFromGraph, mermaidFromUserFlow, personalize } from "@/server/graph";
 
 describe("mermaidFromGraph", () => {
   it("emits graph TD with node ids that exist in the graph", async () => {
@@ -12,5 +12,19 @@ describe("mermaidFromGraph", () => {
     for (const n of g.nodes) {
       expect(m).toContain(n.id);
     }
+  });
+
+  it("emits flowchart LR from a user-flow graph", () => {
+    const m = mermaidFromUserFlow({
+      nodes: [
+        { id: "host", label: "Host", kind: "actor" },
+        { id: "guest", label: "Guest", kind: "actor" },
+      ],
+      edges: [{ from: "host", to: "guest", label: "sync model" }],
+    });
+    expect(m.startsWith("flowchart LR")).toBe(true);
+    expect(m).toContain("host");
+    expect(m).toContain("guest");
+    expect(m).toContain("sync model");
   });
 });

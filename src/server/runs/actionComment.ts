@@ -1,5 +1,6 @@
 import { ADVISORY_CHECK_NAME, tavilyHitsLabel } from "@/server/shared";
 import { displayStamp } from "@/server/shared";
+import { mermaidFromUserFlow } from "@/server/graph/mermaid";
 import type { Coverage, Finding, OrientationMap, Run } from "@/server/shared";
 
 export type AdvisoryCheck = {
@@ -16,6 +17,7 @@ function coverageChips(coverage: Coverage): string {
     `hops: ${coverage.hops}`,
     `tavily: ${coverage.tavily}`,
     `vision: ${coverage.vision}`,
+    `review: ${coverage.review ?? "skipped"}`,
   ];
   if (coverage.budgetCapped) chips.push("budget_capped");
   if (coverage.timedOut) chips.push("timed_out");
@@ -69,6 +71,18 @@ export function advisoryComment(run: Run, origin: string): string {
       map.startHere.forEach((item, index) => {
         lines.push(`${index + 1}. ${item.path}  ${item.symbol}`);
       });
+      lines.push("");
+    }
+  }
+  const walk = run.walkthrough;
+  if (walk && walk.summary.length > 0) {
+    lines.push("Summary");
+    for (const bullet of walk.summary) lines.push(`- ${bullet}`);
+    lines.push("");
+    if (walk.userFlow.nodes.length > 0) {
+      lines.push("```mermaid");
+      lines.push(mermaidFromUserFlow(walk.userFlow));
+      lines.push("```");
       lines.push("");
     }
   }

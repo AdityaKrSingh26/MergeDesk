@@ -201,7 +201,7 @@ describe("ultraSkip", () => {
     };
     const { id } = await startRun({ kind: "fixture", fixtureId: "fixture-ship" }, { chat });
     const run = await waitRun(id, 5_000);
-    expect(models.filter((m) => m === MODELS.super).length).toBe(2);
+    expect(models.filter((m) => m === MODELS.super).length).toBe(4);
     expect(models).toContain(MODELS.ultra);
     expect(run.modelParseFailed).toBe(true);
     expect(run.verdict?.findings.some((f) => f.kind === "looks_right_logic")).toBe(true);

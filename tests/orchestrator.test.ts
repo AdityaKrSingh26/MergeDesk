@@ -22,10 +22,20 @@ function fakeSuperEmpty(): ChatClient {
     chat: {
       completions: {
         create: async (body) => {
+          const user = body.messages.find((m) => m.role === "user");
+          const text = typeof user?.content === "string" ? user.content : "";
           const content =
             body.model === MODELS.lightning
               ? JSON.stringify({ claims: [] })
-              : JSON.stringify({
+              : text.includes("Walkthrough JSON")
+                ? JSON.stringify({
+                    summary: ["Adds a helper."],
+                    userFlow: { nodes: [{ id: "a", label: "Caller", kind: "actor" }], edges: [] },
+                    fileLayers: [],
+                    comments: [],
+                    suggestions: [],
+                  })
+                : JSON.stringify({
                   startHere: [],
                   concerns: [],
                   functions: [],
@@ -53,6 +63,8 @@ function fakeSuperThatReturnsInventedSurface(): ChatClient {
     chat: {
       completions: {
         create: async (body) => {
+          const user = body.messages.find((m) => m.role === "user");
+          const text = typeof user?.content === "string" ? user.content : "";
           const content =
             body.model === MODELS.lightning
               ? JSON.stringify({
@@ -60,6 +72,21 @@ function fakeSuperThatReturnsInventedSurface(): ChatClient {
                     { type: "package", query: "foo_payments_sdk", packageName: "foo_payments_sdk" },
                   ],
                 })
+              : text.includes("Walkthrough JSON")
+                ? JSON.stringify({
+                    summary: ["CSV export writes invoice rows."],
+                    userFlow: { nodes: [{ id: "op", label: "Operator", kind: "actor" }], edges: [] },
+                    fileLayers: [{ name: "Secret", paths: ["src/auth.ts"], why: "key" }],
+                    comments: [{
+                      path: "src/auth.ts",
+                      startLine: 11,
+                      title: "AWS key in the patch",
+                      body: "Remove the hardcoded key.",
+                      severity: "issue",
+                      quote: "AKIAIOSFODNN7EXAMPLE",
+                    }],
+                    suggestions: [],
+                  })
               : JSON.stringify({
                   startHere: [
                     { path: "src/invoices.ts", symbol: "exportInvoicesCsv", why: "CSV export" },
@@ -110,6 +137,21 @@ describe("orchestrator", () => {
     const run = await waitRun(id, 5_000);
     expect(run.source).toBe("replay");
     expect(run.verdict?.stamp).toBe("BLOCK");
+    expect(run.walkthrough?.summary.length).toBeGreaterThan(0);
+    expect(run.coverage.review).toBe("skipped");
+  });
+
+  it("Review comments do not change a BLOCK stamp", async () => {
+    process.env.NEBIUS_API_KEY = "test";
+    process.env.TAVILY_API_KEY = "test";
+    const { id } = await startRun({ kind: "fixture", fixtureId: "fixture-block" }, {
+      chat: fakeSuperThatReturnsInventedSurface(),
+      tavilyFetch: async () => new Response(JSON.stringify({ results: [] }), { status: 200 }),
+    });
+    const run = await waitRun(id, 5_000);
+    expect(run.verdict?.stamp).toBe("BLOCK");
+    expect(run.coverage.review).toBe("ok");
+    expect(run.walkthrough?.comments[0]?.path).toBe("src/auth.ts");
   });
 
   it("with fake chat + tavily, fixture-block source is fixture and invented_surface is FIX-class in findings alongside secret", async () => {

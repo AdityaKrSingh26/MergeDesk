@@ -32,3 +32,12 @@ export function ultraWorstCaseUsd(): number {
     cachedTokens: 0,
   });
 }
+
+export function superWorstCaseUsd(): number {
+  return usdEstimate({
+    model: MODELS.super,
+    promptTokens: 16_000,
+    completionTokens: 4_096,
+    cachedTokens: 0,
+  });
+}
